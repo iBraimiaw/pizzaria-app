@@ -1,15 +1,4 @@
 <?php
-/**
- * includes/functions.php
- *
- * Arquivo base do sistema. Toda página faz require_once deste arquivo.
- * Faz, nesta ordem:
- *   1) configurações (banco, localização da pizzaria, taxa de entrega)
- *   2) sessão com cookie protegido (HttpOnly, SameSite, Secure em HTTPS)
- *   3) cabeçalhos de segurança HTTP (incluindo Content-Security-Policy)
- *   4) conexão PDO
- *   5) funções de apoio (escape anti-XSS, carrinho, cupom, frete)
- */
 
 // ---------------------------------------------------------------
 // 1) CONFIGURAÇÕES  (AJUSTE ESTES VALORES AO SEU AMBIENTE)
@@ -39,8 +28,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => '/',
-        'secure'   => $https,   // só envia o cookie por HTTPS quando o site usa HTTPS
-        'httponly' => true,     // JavaScript não consegue ler o cookie (limita o estrago de um XSS)
+        'secure'   => $https,
+        'httponly' => true,
         'samesite' => 'Lax',
     ]);
     session_start();
@@ -53,12 +42,7 @@ if (!headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-
-    // Content-Security-Policy: segunda camada de defesa contra XSS.
-    // Obs.: as páginas atuais usam <script>, <style> e onclick inline, por isso 'unsafe-inline'
-    // ainda é necessário. O que a política já bloqueia: scripts de outros domínios, envio de
-    // dados para servidores desconhecidos (connect-src), <object>/<embed>, <base> e
-    // formulários apontando para fora do site.
+    
     header("Content-Security-Policy: "
         . "default-src 'self'; "
         . "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
@@ -115,7 +99,6 @@ if (!function_exists('e')) {
 function url_segura($url, string $padrao = ''): string
 {
     $url = trim((string)$url);
-    // Navegadores ignoram espaços/quebras no meio do esquema ("java\nscript:"), então testamos sem eles
     $limpa = preg_replace('/[\x00-\x20\x7F]+/', '', $url);
     if ($limpa === '' || $limpa === null) {
         return $padrao;
