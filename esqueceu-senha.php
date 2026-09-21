@@ -3,6 +3,7 @@ require_once 'includes/functions.php';
 
 $mensagem = '';
 $erro = '';
+$link_teste = '';
 
 if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
@@ -22,7 +23,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->execute([$usuario['id'], $token, $expiracao]);
         
         // Link de redefinição
-        $link = "http://" . $_SERVER['HTTP_HOST'] . "/pizzaria-unica/redefinir-senha.php?token=" . $token;
+        $link = "http://" . host_seguro() . "/pizzaria-unica/redefinir-senha.php?token=" . $token;
+        $link_html = e($link);
+        $nome_email = e($usuario['nome']);
         
         // Enviar email (simulação - em produção use PHPMailer ou similar)
         $assunto = "Recuperação de Senha - Pizzaria do Bairro";
@@ -30,10 +33,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         <html>
         <head><title>Recuperação de Senha</title></head>
         <body>
-            <h2>Olá, {$usuario['nome']}!</h2>
+            <h2>Olá, {$nome_email}!</h2>
             <p>Você solicitou a recuperação de senha da sua conta na Pizzaria do Bairro.</p>
             <p>Clique no link abaixo para redefinir sua senha:</p>
-            <p><a href='{$link}'>Redefinir Senha</a></p>
+            <p><a href='{$link_html}'>Redefinir Senha</a></p>
             <p>Este link é válido por 1 hora.</p>
             <p>Se você não solicitou essa alteração, ignore este email.</p>
             <br>
@@ -44,7 +47,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Em ambiente de teste, exibir o link na tela (já que pode não ter servidor de email configurado)
         $_SESSION['link_recuperacao'] = $link;
-        $mensagem = "Um link de recuperação foi enviado para seu email. (Em ambiente de teste, <a href='$link' target='_blank'>clique aqui</a> para redefinir sua senha)";
+        $mensagem = "Um link de recuperação foi enviado para seu email.";
+        $link_teste = $link; // exibido só em ambiente de teste, sempre escapado no HTML
         
         // Em produção, descomente a linha abaixo e configure o envio de email
         // mail($email, $assunto, $mensagem_email, "Content-Type: text/html; charset=UTF-8");
@@ -157,11 +161,15 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         <p class="subtitle">Digite seu email para receber o link de recuperação</p>
         
         <?php if($mensagem): ?>
-            <div class="alert alert-success"><?php echo $mensagem; ?></div>
+            <div class="alert alert-success"><?= e($mensagem) ?>
+                <?php if($link_teste): ?>
+                    (Em ambiente de teste, <a href="<?= e($link_teste) ?>" target="_blank" rel="noopener noreferrer">clique aqui</a> para redefinir sua senha)
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
         
         <?php if($erro): ?>
-            <div class="alert alert-danger"><?php echo $erro; ?></div>
+            <div class="alert alert-danger"><?= e($erro) ?></div>
         <?php endif; ?>
         
         <form method="POST">

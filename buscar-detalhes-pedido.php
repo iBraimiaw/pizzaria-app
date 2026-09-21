@@ -1,12 +1,14 @@
 <?php
 require_once 'includes/functions.php';
 
+header('Content-Type: application/json; charset=utf-8');
+
 if(!isset($_SESSION['usuario_id'])) {
-    echo json_encode(['error' => 'Não autorizado']);
+    echo json_seguro(['error' => 'Não autorizado']);
     exit;
 }
 
-$pedido_id = $_GET['pedido_id'] ?? 0;
+$pedido_id = (int)($_GET['pedido_id'] ?? 0);
 
 // Verificar se o pedido pertence ao usuário
 $stmt = $pdo->prepare("SELECT * FROM pedidos WHERE id = ? AND usuario_id = ?");
@@ -14,7 +16,7 @@ $stmt->execute([$pedido_id, $_SESSION['usuario_id']]);
 $pedido = $stmt->fetch();
 
 if(!$pedido) {
-    echo json_encode(['error' => 'Pedido não encontrado']);
+    echo json_seguro(['error' => 'Pedido não encontrado']);
     exit;
 }
 
@@ -38,7 +40,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$pedido_id]);
 $itens = $stmt->fetchAll();
 
-echo json_encode([
+echo json_seguro([
     'pedido' => $pedido,
     'itens' => $itens
 ]);

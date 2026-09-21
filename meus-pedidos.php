@@ -405,7 +405,7 @@ $status_map = [
                 <?php endif; ?>
                 <li class="user-info">
                     <i class="fas fa-user-circle"></i>
-                    <span><?php echo $_SESSION['usuario_nome']; ?></span>
+                    <span><?= e($_SESSION['usuario_nome']) ?></span>
                     <a href="logout.php" class="logout-btn">
                         <i class="fas fa-sign-out-alt"></i> Sair
                     </a>
@@ -426,12 +426,12 @@ $status_map = [
                     </a>
                 </div>
             <?php else: ?>
-                <?php foreach($pedidos as $pedido): ?>
+                <?php foreach($pedidos as $pedido): $st = $status_map[$pedido['status']] ?? $status_map['PENDENTE']; ?>
                     <div class="pedido-card">
                         <div class="pedido-header">
                             <div>
                                 <div class="pedido-numero">
-                                    <i class="fas fa-receipt"></i> Pedido #<?php echo str_pad($pedido['id'], 6, '0', STR_PAD_LEFT); ?>
+                                    <i class="fas fa-receipt"></i> Pedido #<?php echo str_pad((int)$pedido['id'], 6, '0', STR_PAD_LEFT); ?>
                                 </div>
                                 <div class="pedido-data">
                                     <i class="far fa-calendar-alt"></i> <?php echo date('d/m/Y', strtotime($pedido['data_pedido'])); ?>
@@ -446,11 +446,11 @@ $status_map = [
                         <div class="pedido-info">
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-map-marker-alt"></i> Endereço</div>
-                                <div class="info-value"><?php echo $pedido['endereco_entrega']; ?></div>
+                                <div class="info-value"><?= e($pedido['endereco_entrega']) ?></div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-tachometer-alt"></i> Distância</div>
-                                <div class="info-value"><?php echo $pedido['distancia_km']; ?> km</div>
+                                <div class="info-value"><?= e($pedido['distancia_km']) ?> km</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-truck"></i> Taxa entrega</div>
@@ -458,15 +458,15 @@ $status_map = [
                             </div>
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-credit-card"></i> Pagamento</div>
-                                <div class="info-value"><?php echo $pedido['forma_pagamento']; ?></div>
+                                <div class="info-value"><?= e($pedido['forma_pagamento']) ?></div>
                             </div>
                         </div>
                         
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                            <span class="status-badge" style="background: <?php echo $status_map[$pedido['status']]['cor']; ?>20; color: <?php echo $status_map[$pedido['status']]['cor']; ?>; border: 1px solid <?php echo $status_map[$pedido['status']]['cor']; ?>">
-                                <?php echo $status_map[$pedido['status']]['texto']; ?>
+                            <span class="status-badge" style="background: <?= e($st['cor']) ?>20; color: <?= e($st['cor']) ?>; border: 1px solid <?= e($st['cor']) ?>">
+                                <?= e($st['texto']) ?>
                             </span>
-                            <button class="btn-detalhes" onclick="verDetalhes(<?php echo $pedido['id']; ?>)">
+                            <button class="btn-detalhes" onclick="verDetalhes(<?= (int)$pedido['id'] ?>)">
                                 <i class="fas fa-eye"></i> Ver detalhes
                             </button>
                         </div>
@@ -492,6 +492,13 @@ $status_map = [
     </div>
 
     <script>
+        // Escapa texto antes de colocá-lo em innerHTML (evita XSS via endereço, nome de produto etc.)
+        function esc(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
         function verDetalhes(pedidoId) {
             const modal = document.getElementById('detalhesModal');
             const conteudo = document.getElementById('detalhesConteudo');
@@ -502,13 +509,17 @@ $status_map = [
             fetch(`buscar-detalhes-pedido.php?pedido_id=${pedidoId}`)
                 .then(response => response.json())
                 .then(data => {
+                    if(data.error || !data.pedido) {
+                        conteudo.textContent = 'Não foi possível carregar os detalhes do pedido.';
+                        return;
+                    }
                     let html = `
                         <div style="margin-bottom: 20px;">
                             <p><strong>📅 Data:</strong> ${new Date(data.pedido.data_pedido).toLocaleString('pt-BR')}</p>
-                            <p><strong>📍 Endereço:</strong> ${data.pedido.endereco_entrega}</p>
-                            <p><strong>📏 Distância:</strong> ${data.pedido.distancia_km} km</p>
+                            <p><strong>📍 Endereço:</strong> ${esc(data.pedido.endereco_entrega)}</p>
+                            <p><strong>📏 Distância:</strong> ${esc(data.pedido.distancia_km)} km</p>
                             <p><strong>🚚 Taxa entrega:</strong> R$ ${parseFloat(data.pedido.taxa_entrega).toFixed(2)}</p>
-                            <p><strong>💳 Pagamento:</strong> ${data.pedido.forma_pagamento}</p>
+                            <p><strong>💳 Pagamento:</strong> ${esc(data.pedido.forma_pagamento)}</p>
                         </div>
                         
                         <h3>Itens do Pedido:</h3>
@@ -527,8 +538,8 @@ $status_map = [
                     data.itens.forEach(item => {
                         html += `
                             <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 10px;">${item.produto_nome}</td>
-                                <td style="padding: 10px; text-align: center;">${item.quantidade}</td>
+                                <td style="padding: 10px;">${esc(item.produto_nome)}</td>
+                                <td style="padding: 10px; text-align: center;">${esc(item.quantidade)}</td>
                                 <td style="padding: 10px; text-align: right;">R$ ${parseFloat(item.preco_unitario).toFixed(2)}</td>
                                 <td style="padding: 10px; text-align: right;">R$ ${(item.quantidade * item.preco_unitario).toFixed(2)}</td>
                             </tr>

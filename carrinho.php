@@ -8,14 +8,14 @@ if(!isset($_SESSION['usuario_id'])) {
 
 // Adicionar produto normal (vindo do cardápio)
 if(isset($_POST['add_carrinho'])) {
-    addToCart($_POST['produto_id'], $_POST['nome'], $_POST['preco'], $_POST['quantidade']);
+    addToCart($_POST['produto_id'] ?? 0, null, null, $_POST['quantidade'] ?? 1);
     header('Location: cardapio.php');
     exit;
 }
 
 // Adicionar item extra (bebida ou porção) diretamente no carrinho
 if(isset($_POST['add_extra'])) {
-    $produto_id = $_POST['extra_id'];
+    $produto_id = (int)($_POST['extra_id'] ?? 0);
     // Buscar dados do produto
     $stmt = $pdo->prepare("SELECT nome, preco FROM produtos WHERE id = ?");
     $stmt->execute([$produto_id]);
@@ -30,29 +30,38 @@ if(isset($_POST['add_extra'])) {
 
 // Remover item
 if(isset($_GET['remove'])) {
-    unset($_SESSION['carrinho'][$_GET['remove']]);
-    $_SESSION['carrinho'] = array_values($_SESSION['carrinho']);
+    unset($_SESSION['carrinho'][(int)$_GET['remove']]);
+    $_SESSION['carrinho'] = array_values($_SESSION['carrinho'] ?? []);
     header('Location: carrinho.php');
     exit;
 }
 
 // Atualizar quantidades
 if(isset($_POST['atualizar'])) {
-    foreach($_POST['quantidade'] as $index => $qtd) {
+    $quantidades = (isset($_POST['quantidade']) && is_array($_POST['quantidade'])) ? $_POST['quantidade'] : [];
+    foreach($quantidades as $index => $qtd) {
+        // só aceita índices que existem no carrinho e quantidades inteiras (evita valores com HTML/script)
+        if(!is_int($index) || !isset($_SESSION['carrinho'][$index])) {
+            continue;
+        }
+        $qtd = filter_var($qtd, FILTER_VALIDATE_INT);
+        if($qtd === false) {
+            continue; // valor que não é número inteiro é ignorado
+        }
         if($qtd <= 0) {
             unset($_SESSION['carrinho'][$index]);
         } else {
-            $_SESSION['carrinho'][$index]['quantidade'] = $qtd;
+            $_SESSION['carrinho'][$index]['quantidade'] = min($qtd, 99);
         }
     }
-    $_SESSION['carrinho'] = array_values($_SESSION['carrinho']);
+    $_SESSION['carrinho'] = array_values($_SESSION['carrinho'] ?? []);
     header('Location: carrinho.php');
     exit;
 }
 
 // Processar cupom (se houver)
 if(isset($_POST['aplicar_cupom'])) {
-    $codigo = strtoupper($_POST['codigo_cupom']);
+    $codigo = substr(preg_replace('/[^A-Z0-9_\-]/', '', strtoupper(trim((string)($_POST['codigo_cupom'] ?? '')))), 0, 30);
     $subtotal = calcularTotalCarrinho();
     
     // Calcular frete temporário
@@ -163,7 +172,7 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
                 <li><a href="cardapio.php">Cardápio</a></li>
                 <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
                 <li><a href="carrinho.php">Carrinho</a></li>
-                <li class="user-info">👤 <?php echo $_SESSION['usuario_nome']; ?> <a href="logout.php" style="color:white;">Sair</a></li>
+                <li class="user-info">👤 <?= e($_SESSION['usuario_nome']) ?> <a href="logout.php" style="color:white;">Sair</a></li>
             </ul>
         </nav>
     </header>
@@ -173,10 +182,10 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
             <h1>🛒 Meu Carrinho</h1>
             
             <?php if(isset($_SESSION['mensagem_cupom'])): ?>
-                <div class="alert alert-success"><?php echo $_SESSION['mensagem_cupom']; unset($_SESSION['mensagem_cupom']); ?></div>
+                <div class="alert alert-success"><?php echo e($_SESSION['mensagem_cupom']); unset($_SESSION['mensagem_cupom']); ?></div>
             <?php endif; ?>
             <?php if(isset($_SESSION['mensagem_extra'])): ?>
-                <div class="alert alert-success"><?php echo $_SESSION['mensagem_extra']; unset($_SESSION['mensagem_extra']); ?></div>
+                <div class="alert alert-success"><?php echo e($_SESSION['mensagem_extra']); unset($_SESSION['mensagem_extra']); ?></div>
             <?php endif; ?>
             
             <?php if(empty($_SESSION['carrinho'])): ?>
@@ -188,11 +197,11 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
                         <tbody>
                             <?php foreach($_SESSION['carrinho'] as $index => $item): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($item['nome']); ?></td>
-                                <td><input type="number" name="quantidade[<?php echo $index; ?>]" value="<?php echo $item['quantidade']; ?>" min="0" class="quantidade-input"></td>
+                                <td><?php echo e($item['nome']); ?></td>
+                                <td><input type="number" name="quantidade[<?= (int)$index ?>]" value="<?= (int)$item['quantidade'] ?>" min="0" class="quantidade-input"></td>
                                 <td>R$ <?php echo number_format($item['preco'], 2, ',', '.'); ?></td>
                                 <td>R$ <?php echo number_format($item['preco'] * $item['quantidade'], 2, ',', '.'); ?></td>
-                                <td><a href="?remove=<?php echo $index; ?>" class="btn btn-danger">Remover</a></td>
+                                <td><a href="?remove=<?= (int)$index ?>" class="btn btn-danger">Remover</a></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -206,10 +215,10 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
                     <div class="extras-grid">
                         <?php foreach($extras as $extra): ?>
                         <div class="extra-item">
-                            <span><strong><?php echo htmlspecialchars($extra['nome']); ?></strong></span>
+                            <span><strong><?php echo e($extra['nome']); ?></strong></span>
                             <span class="extra-preco">R$ <?php echo number_format($extra['preco'], 2, ',', '.'); ?></span>
                             <form method="POST" style="display:inline;">
-                                <input type="hidden" name="extra_id" value="<?php echo $extra['id']; ?>">
+                                <input type="hidden" name="extra_id" value="<?= (int)$extra['id'] ?>">
                                 <button type="submit" name="add_extra" class="btn btn-primary" style="padding: 5px 12px;">Adicionar</button>
                             </form>
                         </div>
@@ -224,15 +233,15 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
                         <button type="submit" name="aplicar_cupom" class="btn btn-primary">Aplicar Cupom</button>
                     </form>
                     <?php if($cupom_aplicado): ?>
-                        <div>Cupom aplicado: <strong><?php echo $cupom_aplicado['codigo']; ?></strong> - Desconto de R$ <?php echo number_format($desconto_cupom, 2, ',', '.'); ?> 
+                        <div>Cupom aplicado: <strong><?= e($cupom_aplicado['codigo']) ?></strong> - Desconto de R$ <?php echo number_format($desconto_cupom, 2, ',', '.'); ?> 
                         <a href="?remover_cupom=1" style="color:#e74c3c; margin-left:10px;">[Remover]</a></div>
                     <?php endif; ?>
                 </div>
                 
                 <!-- RESUMO DO PEDIDO -->
                 <div class="resumo-pedido">
-                    <div class="resumo-item"><span>📍 Endereço:</span><span><?php echo htmlspecialchars($usuario['endereco']); ?></span></div>
-                    <div class="resumo-item"><span>📏 Distância:</span><span><?php echo $distancia; ?> km</span></div>
+                    <div class="resumo-item"><span>📍 Endereço:</span><span><?= e($usuario['endereco'] ?? '') ?></span></div>
+                    <div class="resumo-item"><span>📏 Distância:</span><span><?= e($distancia) ?> km</span></div>
                     <div class="resumo-item"><span>🚚 Taxa de entrega:</span><span>R$ <?php echo number_format($taxa_entrega, 2, ',', '.'); ?></span></div>
                     <div class="resumo-item"><span>🍕 Subtotal:</span><span>R$ <?php echo number_format($subtotal, 2, ',', '.'); ?></span></div>
                     <?php if($desconto_cupom > 0): ?>
@@ -243,12 +252,12 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
                     <form method="POST" action="finalizar-pedido.php">
                         <div class="form-group"><label>Forma de pagamento:</label><select name="forma_pagamento" required><option value="Dinheiro">Dinheiro</option><option value="Cartão Crédito">Cartão Crédito</option><option value="Cartão Débito">Cartão Débito</option><option value="PIX">PIX</option></select></div>
                         <div id="trocoGroup" style="display:none;"><label>Troco para:</label><input type="number" step="0.01" name="troco_para"></div>
-                        <input type="hidden" name="distancia" value="<?php echo $distancia; ?>">
-                        <input type="hidden" name="taxa_entrega" value="<?php echo $taxa_entrega; ?>">
-                        <input type="hidden" name="total" value="<?php echo $total; ?>">
-                        <input type="hidden" name="desconto_cupom" value="<?php echo $desconto_cupom; ?>">
+                        <input type="hidden" name="distancia" value="<?= e($distancia) ?>">
+                        <input type="hidden" name="taxa_entrega" value="<?= e($taxa_entrega) ?>">
+                        <input type="hidden" name="total" value="<?= e($total) ?>">
+                        <input type="hidden" name="desconto_cupom" value="<?= e($desconto_cupom) ?>">
                         <?php if($cupom_aplicado): ?>
-                        <input type="hidden" name="cupom_id" value="<?php echo $cupom_aplicado['id']; ?>">
+                        <input type="hidden" name="cupom_id" value="<?= (int)$cupom_aplicado['id'] ?>">
                         <?php endif; ?>
                         <button type="submit" class="btn btn-success" style="width:100%; margin-top:20px;">Finalizar Pedido</button>
                     </form>

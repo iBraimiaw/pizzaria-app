@@ -6,7 +6,7 @@ if(!isset($_SESSION['usuario_id'])) {
     exit;
 }
 
-$pedido_id = isset($_GET['id']) ? $_GET['id'] : 0;
+$pedido_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Buscar dados do pedido
 $stmt = $pdo->prepare("
@@ -229,7 +229,7 @@ $itens = $stmt->fetchAll();
                 <div class="pedido-info">
                     <div class="info-row">
                         <span class="info-label">Número do Pedido:</span>
-                        <span class="info-value"><strong>#<?php echo str_pad($pedido['id'], 6, '0', STR_PAD_LEFT); ?></strong></span>
+                        <span class="info-value"><strong>#<?php echo str_pad((int)$pedido['id'], 6, '0', STR_PAD_LEFT); ?></strong></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Data do Pedido:</span>
@@ -243,15 +243,15 @@ $itens = $stmt->fetchAll();
                     </div>
                     <div class="info-row">
                         <span class="info-label">Cliente:</span>
-                        <span class="info-value"><?php echo $pedido['cliente_nome']; ?></span>
+                        <span class="info-value"><?= e($pedido['cliente_nome']) ?></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Endereço de Entrega:</span>
-                        <span class="info-value"><?php echo $pedido['endereco_entrega']; ?></span>
+                        <span class="info-value"><?= e($pedido['endereco_entrega']) ?></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Forma de Pagamento:</span>
-                        <span class="info-value"><?php echo $pedido['forma_pagamento']; ?></span>
+                        <span class="info-value"><?= e($pedido['forma_pagamento']) ?></span>
                     </div>
                     <?php if($pedido['troco_para']): ?>
                     <div class="info-row">
@@ -276,14 +276,14 @@ $itens = $stmt->fetchAll();
                         <tr>
                             <td>
                                 <?php 
-                                if(strpos($item['produto_nome'], '+') !== false): 
+                                if(strpos((string)$item['produto_nome'], '+') !== false): 
                                 ?>
-                                    <i class="fas fa-pizza-slice"></i> <?php echo $item['produto_nome']; ?>
+                                    <i class="fas fa-pizza-slice"></i> <?= e($item['produto_nome']) ?>
                                 <?php else: ?>
-                                    <i class="fas fa-utensils"></i> <?php echo $item['produto_nome']; ?>
+                                    <i class="fas fa-utensils"></i> <?= e($item['produto_nome']) ?>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo $item['quantidade']; ?></td>
+                            <td><?= (int)$item['quantidade'] ?></td>
                             <td>R$ <?php echo number_format($item['preco_unitario'], 2, ',', '.'); ?></td>
                             <td>R$ <?php echo number_format($item['quantidade'] * $item['preco_unitario'], 2, ',', '.'); ?></td>
                         </tr>

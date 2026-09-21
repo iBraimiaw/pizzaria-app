@@ -184,7 +184,7 @@ if(isset($_POST['login'])) {
             <h2><i class="fas fa-key"></i> Recuperar Senha</h2>
             
             <?php if($erro): ?>
-                <div class="alert alert-danger"><?php echo $erro; ?></div>
+                <div class="alert alert-danger"><?= e($erro) ?></div>
             <?php endif; ?>
             
             <div class="alert alert-info">
@@ -212,7 +212,7 @@ if(isset($_POST['login'])) {
             <h2><i class="fas fa-pizza-slice"></i> Login</h2>
             
             <?php if($erro): ?>
-                <div class="alert alert-danger"><?php echo $erro; ?></div>
+                <div class="alert alert-danger"><?= e($erro) ?></div>
             <?php endif; ?>
             
             <form method="POST">

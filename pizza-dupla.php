@@ -16,58 +16,60 @@ $stmt = $pdo->prepare("
 $stmt->execute();
 $pizzas = $stmt->fetchAll();
 
-$sabor1_id = isset($_GET['sabor1']) ? $_GET['sabor1'] : null;
-$sabor2_id = isset($_GET['sabor2']) ? $_GET['sabor2'] : null;
-$preco_calculado = 0;
+// Ids vindos da URL sempre viram inteiros (bloqueia XSS refletido e valores inesperados)
+$sabor1_id = isset($_GET['sabor1']) ? (int)$_GET['sabor1'] : 0;
+$sabor2_id = isset($_GET['sabor2']) ? (int)$_GET['sabor2'] : 0;
 
-if($sabor1_id && $sabor2_id) {
-    // Buscar preços dos sabores
-    $stmt = $pdo->prepare("SELECT id, nome, preco FROM produtos WHERE id IN (?, ?)");
-    $stmt->execute([$sabor1_id, $sabor2_id]);
-    $sabores = $stmt->fetchAll();
-    
-    if(count($sabores) == 2) {
-        // Calcular média dos preços
-        $preco_calculado = ($sabores[0]['preco'] + $sabores[1]['preco']) / 2;
-    }
-}
+// Mapa id => pizza (somente pizzas salgadas disponíveis)
+$mapa_pizzas = array_column($pizzas, null, 'id');
 
-// Adicionar ao carrinho
+// Ids que não correspondem a uma pizza da lista são descartados
+$sabor1_id = isset($mapa_pizzas[$sabor1_id]) ? $sabor1_id : null;
+$sabor2_id = isset($mapa_pizzas[$sabor2_id]) ? $sabor2_id : null;
+
+$nome_sabor1 = $sabor1_id ? $mapa_pizzas[$sabor1_id]['nome'] : '';
+$nome_sabor2 = $sabor2_id ? $mapa_pizzas[$sabor2_id]['nome'] : '';
+
+$preco1 = $sabor1_id ? (float)$mapa_pizzas[$sabor1_id]['preco'] : 0;
+$preco2 = $sabor2_id ? (float)$mapa_pizzas[$sabor2_id]['preco'] : 0;
+$preco_calculado = ($sabor1_id && $sabor2_id && $sabor1_id !== $sabor2_id) ? ($preco1 + $preco2) / 2 : 0;
+
+// Adicionar ao carrinho (nomes e preço são recalculados no servidor; nada disso é confiado ao navegador)
 if(isset($_POST['adicionar_carrinho'])) {
-    $sabor1 = $_POST['sabor1'];
-    $sabor2 = $_POST['sabor2'];
-    $quantidade = $_POST['quantidade'];
-    $preco_total = $_POST['preco_total'];
-    
-    // Buscar nomes dos sabores
-    $stmt = $pdo->prepare("SELECT nome FROM produtos WHERE id = ?");
-    $stmt->execute([$sabor1]);
-    $nome1 = $stmt->fetch()['nome'];
-    
-    $stmt->execute([$sabor2]);
-    $nome2 = $stmt->fetch()['nome'];
-    
-    $nome_personalizado = "🍕 Pizza Meia a Meia: $nome1 + $nome2";
-    
-    // Salvar na sessão com informações especiais
-    $item_carrinho = [
-        'tipo' => 'personalizada',
-        'sabor1_id' => $sabor1,
-        'sabor2_id' => $sabor2,
-        'sabor1_nome' => $nome1,
-        'sabor2_nome' => $nome2,
-        'nome' => $nome_personalizado,
-        'preco' => $preco_total,
-        'quantidade' => $quantidade
-    ];
-    
-    if (!isset($_SESSION['carrinho'])) {
-        $_SESSION['carrinho'] = [];
+    $sabor1 = (int)($_POST['sabor1'] ?? 0);
+    $sabor2 = (int)($_POST['sabor2'] ?? 0);
+    $quantidade = max(1, min(10, (int)($_POST['quantidade'] ?? 1)));
+
+    if($sabor1 && $sabor2 && $sabor1 !== $sabor2 && isset($mapa_pizzas[$sabor1], $mapa_pizzas[$sabor2])) {
+        $nome1 = $mapa_pizzas[$sabor1]['nome'];
+        $nome2 = $mapa_pizzas[$sabor2]['nome'];
+        $preco_total = round(((float)$mapa_pizzas[$sabor1]['preco'] + (float)$mapa_pizzas[$sabor2]['preco']) / 2, 2);
+
+        $nome_personalizado = "🍕 Pizza Meia a Meia: $nome1 + $nome2";
+
+        // Salvar na sessão com informações especiais
+        $item_carrinho = [
+            'tipo' => 'personalizada',
+            'sabor1_id' => $sabor1,
+            'sabor2_id' => $sabor2,
+            'sabor1_nome' => $nome1,
+            'sabor2_nome' => $nome2,
+            'nome' => $nome_personalizado,
+            'preco' => $preco_total,
+            'quantidade' => $quantidade
+        ];
+
+        if (!isset($_SESSION['carrinho'])) {
+            $_SESSION['carrinho'] = [];
+        }
+
+        $_SESSION['carrinho'][] = $item_carrinho;
+
+        header('Location: carrinho.php');
+        exit;
     }
-    
-    $_SESSION['carrinho'][] = $item_carrinho;
-    
-    header('Location: carrinho.php');
+
+    header('Location: pizza-dupla.php');
     exit;
 }
 ?>
@@ -344,10 +346,10 @@ if(isset($_POST['adicionar_carrinho'])) {
                     <div class="pizza-visual">
                         <div class="pizza-circle"></div>
                         <div class="pizza-label label-left" id="labelSabor1">
-                            <?php echo $sabor1_id ? htmlspecialchars($pizzas[array_search($sabor1_id, array_column($pizzas, 'id'))]['nome'] ?? 'Sabor 1') : '???'; ?>
+                            <?= $sabor1_id ? e($nome_sabor1) : '???' ?>
                         </div>
                         <div class="pizza-label label-right" id="labelSabor2">
-                            <?php echo $sabor2_id ? htmlspecialchars($pizzas[array_search($sabor2_id, array_column($pizzas, 'id'))]['nome'] ?? 'Sabor 2') : '???'; ?>
+                            <?= $sabor2_id ? e($nome_sabor2) : '???' ?>
                         </div>
                     </div>
 
@@ -357,9 +359,8 @@ if(isset($_POST['adicionar_carrinho'])) {
                                 <h3><i class="fas fa-arrow-left"></i> Primeiro Sabor</h3>
                                 <div id="sabores1">
                                     <?php foreach($pizzas as $pizza): ?>
-                                        <div class="sabor-card <?php echo $sabor1_id == $pizza['id'] ? 'selected' : ''; ?>" 
-                                             onclick="selecionarSabor(1, <?php echo $pizza['id']; ?>, '<?php echo addslashes($pizza['nome']); ?>')">
-                                            <div class="sabor-nome"><?php echo $pizza['nome']; ?></div>
+                                        <div class="sabor-card <?= $sabor1_id === (int)$pizza['id'] ? 'selected' : '' ?>" data-lado="1" data-id="<?= (int)$pizza['id'] ?>" data-nome="<?= e($pizza['nome']) ?>">
+                                            <div class="sabor-nome"><?= e($pizza['nome']) ?></div>
                                             <div class="sabor-preco">R$ <?php echo number_format($pizza['preco'], 2, ',', '.'); ?></div>
                                         </div>
                                     <?php endforeach; ?>
@@ -369,17 +370,16 @@ if(isset($_POST['adicionar_carrinho'])) {
                                 <h3>Segundo Sabor <i class="fas fa-arrow-right"></i></h3>
                                 <div id="sabores2">
                                     <?php foreach($pizzas as $pizza): ?>
-                                        <div class="sabor-card <?php echo $sabor2_id == $pizza['id'] ? 'selected' : ''; ?>" 
-                                             onclick="selecionarSabor(2, <?php echo $pizza['id']; ?>, '<?php echo addslashes($pizza['nome']); ?>')">
-                                            <div class="sabor-nome"><?php echo $pizza['nome']; ?></div>
+                                        <div class="sabor-card <?= $sabor2_id === (int)$pizza['id'] ? 'selected' : '' ?>" data-lado="2" data-id="<?= (int)$pizza['id'] ?>" data-nome="<?= e($pizza['nome']) ?>">
+                                            <div class="sabor-nome"><?= e($pizza['nome']) ?></div>
                                             <div class="sabor-preco">R$ <?php echo number_format($pizza['preco'], 2, ',', '.'); ?></div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
-                        <input type="hidden" name="sabor1" id="sabor1" value="<?php echo $sabor1_id; ?>">
-                        <input type="hidden" name="sabor2" id="sabor2" value="<?php echo $sabor2_id; ?>">
+                        <input type="hidden" name="sabor1" id="sabor1" value="<?= e($sabor1_id) ?>">
+                        <input type="hidden" name="sabor2" id="sabor2" value="<?= e($sabor2_id) ?>">
                     </form>
 
                     <?php if($sabor1_id && $sabor2_id): ?>
@@ -389,11 +389,7 @@ if(isset($_POST['adicionar_carrinho'])) {
                             </div>
                         <?php else: ?>
                             <div class="info-preco">
-                                <p><strong>Preço Original:</strong> R$ <?php 
-                                    $preco1 = $pizzas[array_search($sabor1_id, array_column($pizzas, 'id'))]['preco'];
-                                    $preco2 = $pizzas[array_search($sabor2_id, array_column($pizzas, 'id'))]['preco'];
-                                    echo number_format($preco1, 2, ',', '.') . ' + ' . number_format($preco2, 2, ',', '.');
-                                ?></p>
+                                <p><strong>Preço Original:</strong> R$ <?= number_format($preco1, 2, ',', '.') ?> + <?= number_format($preco2, 2, ',', '.') ?></p>
                                 <p><strong>Você paga apenas a MÉDIA:</strong></p>
                                 <div class="preco-calculado">
                                     R$ <?php echo number_format($preco_calculado, 2, ',', '.'); ?>
@@ -402,9 +398,8 @@ if(isset($_POST['adicionar_carrinho'])) {
                             </div>
 
                             <form method="POST">
-                                <input type="hidden" name="sabor1" value="<?php echo $sabor1_id; ?>">
-                                <input type="hidden" name="sabor2" value="<?php echo $sabor2_id; ?>">
-                                <input type="hidden" name="preco_total" value="<?php echo $preco_calculado; ?>">
+                                <input type="hidden" name="sabor1" value="<?= (int)$sabor1_id ?>">
+                                <input type="hidden" name="sabor2" value="<?= (int)$sabor2_id ?>">
                                 
                                 <div class="quantidade">
                                     <label>Quantidade:</label>
@@ -427,30 +422,20 @@ if(isset($_POST['adicionar_carrinho'])) {
     </main>
 
     <script>
-        function selecionarSabor(lado, id, nome) {
-            if(lado === 1) {
-                document.getElementById('sabor1').value = id;
-                document.getElementById('labelSabor1').textContent = nome;
-                // Remover seleção anterior
-                document.querySelectorAll('#sabores1 .sabor-card').forEach(card => {
-                    card.classList.remove('selected');
-                });
-                // Adicionar seleção no clicado
-                event.currentTarget.classList.add('selected');
-            } else {
-                document.getElementById('sabor2').value = id;
-                document.getElementById('labelSabor2').textContent = nome;
-                // Remover seleção anterior
-                document.querySelectorAll('#sabores2 .sabor-card').forEach(card => {
-                    card.classList.remove('selected');
-                });
-                // Adicionar seleção no clicado
-                event.currentTarget.classList.add('selected');
-            }
-            
+        // Os dados do sabor ficam em atributos data-* (escapados no PHP); nada é montado como HTML
+        function selecionarSabor(card) {
+            const lado = card.dataset.lado;
+            document.getElementById('sabor' + lado).value = card.dataset.id;
+            document.getElementById('labelSabor' + lado).textContent = card.dataset.nome;
+            document.querySelectorAll('#sabores' + lado + ' .sabor-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
             // Submeter o formulário para atualizar o preço
             document.getElementById('formSabores').submit();
         }
+
+        document.querySelectorAll('.sabor-card').forEach(card => {
+            card.addEventListener('click', () => selecionarSabor(card));
+        });
     </script>
 </body>
 </html>

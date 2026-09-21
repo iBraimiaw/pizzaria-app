@@ -1,7 +1,7 @@
 <?php
 require_once 'includes/functions.php';
 
-$token = isset($_GET['token']) ? $_GET['token'] : '';
+$token = (isset($_GET['token']) && token_hex_valido($_GET['token'])) ? $_GET['token'] : '';
 $erro = '';
 $sucesso = '';
 
@@ -22,7 +22,7 @@ if($token) {
 }
 
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['redefinir'])) {
-    $token = $_POST['token'];
+    $token = (isset($_POST['token']) && token_hex_valido($_POST['token'])) ? $_POST['token'] : '';
     $nova_senha = $_POST['nova_senha'];
     $confirmar_senha = $_POST['confirmar_senha'];
     
@@ -160,16 +160,16 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['redefinir'])) {
         <p class="subtitle">Crie uma nova senha para sua conta</p>
         
         <?php if($erro): ?>
-            <div class="alert alert-danger"><?php echo $erro; ?></div>
+            <div class="alert alert-danger"><?= e($erro) ?></div>
         <?php endif; ?>
         
         <?php if($sucesso): ?>
-            <div class="alert alert-success"><?php echo $sucesso; ?></div>
+            <div class="alert alert-success"><?= e($sucesso) ?></div>
         <?php endif; ?>
         
         <?php if(!$erro && !$sucesso && $token && $recuperacao): ?>
             <form method="POST">
-                <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
+                <input type="hidden" name="token" value="<?= e($token) ?>">
                 <div class="form-group">
                     <label><i class="fas fa-key"></i> Nova Senha:</label>
                     <input type="password" name="nova_senha" id="nova_senha" required onkeyup="validarForcaSenha()">

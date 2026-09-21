@@ -1,7 +1,7 @@
 <?php
 require_once 'includes/functions.php';
 
-$categoria_id = isset($_GET['categoria']) ? $_GET['categoria'] : null;
+$categoria_id = isset($_GET['categoria']) ? (int)$_GET['categoria'] : null;
 $sql = "SELECT p.*, c.nome as categoria_nome FROM produtos p 
         JOIN categorias c ON p.categoria_id = c.id 
         WHERE p.disponivel = true";
@@ -360,7 +360,7 @@ $categorias = $pdo->query("SELECT * FROM categorias")->fetchAll();
                         <li><a href="admin/">Admin</a></li>
                     <?php endif; ?>
                     <li class="user-info">
-                        <span><?php echo $_SESSION['usuario_nome']; ?></span>
+                        <span><?= e($_SESSION['usuario_nome']) ?></span>
                         <a href="logout.php" class="logout-btn">Sair</a>
                     </li>
                 <?php else: ?>
@@ -388,8 +388,8 @@ $categorias = $pdo->query("SELECT * FROM categorias")->fetchAll();
             <div class="filtros">
                 <a href="cardapio.php" class="btn-filtro <?php echo !$categoria_id ? 'active' : ''; ?>">Todos</a>
                 <?php foreach($categorias as $cat): ?>
-                    <a href="?categoria=<?php echo $cat['id']; ?>" class="btn-filtro <?php echo $categoria_id == $cat['id'] ? 'active' : ''; ?>">
-                        <?php echo $cat['nome']; ?>
+                    <a href="?categoria=<?= (int)$cat['id'] ?>" class="btn-filtro <?php echo $categoria_id == $cat['id'] ? 'active' : ''; ?>">
+                        <?= e($cat['nome']) ?>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -398,23 +398,21 @@ $categorias = $pdo->query("SELECT * FROM categorias")->fetchAll();
                 <?php foreach($produtos as $produto): ?>
                     <div class="produto-card">
                         <div class="imagem-container">
-                            <img src="<?php echo $produto['imagem_url']; ?>" 
-                                 alt="<?php echo $produto['nome']; ?>"
+                            <img src="<?= e(url_segura($produto['imagem_url'])) ?>" 
+                                 alt="<?= e($produto['nome']) ?>"
                                  class="produto-imagem"
                                  loading="lazy"
                                  onerror="this.src='https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Pizza'">
-                            <span class="badge-categoria"><?php echo $produto['categoria_nome']; ?></span>
+                            <span class="badge-categoria"><?= e($produto['categoria_nome']) ?></span>
                         </div>
                         <div class="produto-info">
-                            <div class="produto-nome"><?php echo $produto['nome']; ?></div>
-                            <div class="produto-descricao"><?php echo $produto['descricao']; ?></div>
+                            <div class="produto-nome"><?= e($produto['nome']) ?></div>
+                            <div class="produto-descricao"><?= e($produto['descricao']) ?></div>
                             <div class="produto-preco">R$ <?php echo number_format($produto['preco'], 2, ',', '.'); ?></div>
                             
                             <?php if(isset($_SESSION['usuario_id'])): ?>
                                 <form method="POST" action="carrinho.php" class="form-carrinho">
-                                    <input type="hidden" name="produto_id" value="<?php echo $produto['id']; ?>">
-                                    <input type="hidden" name="nome" value="<?php echo $produto['nome']; ?>">
-                                    <input type="hidden" name="preco" value="<?php echo $produto['preco']; ?>">
+                                    <input type="hidden" name="produto_id" value="<?= (int)$produto['id'] ?>">
                                     <input type="number" name="quantidade" value="1" min="1" class="quantidade-input">
                                     <button type="submit" name="add_carrinho" class="btn-adicionar">
                                         Adicionar

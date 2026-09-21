@@ -10,15 +10,29 @@ $erro = '';
 $sucesso = '';
 
 if($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome = $_POST['nome'];
-    $email = $_POST['email'];
-    $senha = $_POST['senha'];
-    $confirmar_senha = $_POST['confirmar_senha'];
-    $endereco = $_POST['endereco'];
-    $telefone = $_POST['telefone'];
+    $nome = trim((string)($_POST['nome'] ?? ''));
+    $email = trim((string)($_POST['email'] ?? ''));
+    $senha = (string)($_POST['senha'] ?? '');
+    $confirmar_senha = (string)($_POST['confirmar_senha'] ?? '');
+    $endereco = trim((string)($_POST['endereco'] ?? ''));
+    $telefone = trim((string)($_POST['telefone'] ?? ''));
     
+    // Validação de entrada por lista de caracteres permitidos (primeira barreira contra XSS armazenado;
+    // a defesa principal continua sendo escapar com e() ao exibir os dados)
+    if(!preg_match('/^[\p{L}\p{M}][\p{L}\p{M}\s.\'’-]{1,99}$/u', $nome)) {
+        $erro = 'Nome inválido! Use apenas letras, espaços, ponto, apóstrofo e hífen (2 a 100 caracteres).';
+    }
+    elseif(strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $erro = 'E-mail inválido!';
+    }
+    elseif(!preg_match('/^[0-9()\s\-+]{10,20}$/', $telefone) || strlen(preg_replace('/\D/', '', $telefone)) < 10 || strlen(preg_replace('/\D/', '', $telefone)) > 11) {
+        $erro = 'Telefone inválido! Informe DDD e número.';
+    }
+    elseif(!preg_match('/^[\p{L}\p{M}\p{N}\s.,\-\/#º°ª\'()]{5,255}$/u', $endereco)) {
+        $erro = 'Endereço inválido! Use letras, números e os símbolos . , - / # ( ) (5 a 255 caracteres).';
+    }
     // Validar se as senhas coincidem
-    if($senha !== $confirmar_senha) {
+    elseif($senha !== $confirmar_senha) {
         $erro = 'As senhas não coincidem!';
     }
     // Validar força da senha: pelo menos uma letra maiúscula e uma minúscula
@@ -31,8 +45,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     else {
         $senha_hash = md5($senha); // Mantendo o padrão do sistema
-        $latitude = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
-        $longitude = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
+        $latitude = (isset($_POST['latitude']) && is_numeric($_POST['latitude']) && abs((float)$_POST['latitude']) <= 90) ? (float)$_POST['latitude'] : null;
+        $longitude = (isset($_POST['longitude']) && is_numeric($_POST['longitude']) && abs((float)$_POST['longitude']) <= 180) ? (float)$_POST['longitude'] : null;
         
         // Verificar se email já existe
         $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = ?");
@@ -190,13 +204,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         <?php if($erro): ?>
             <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i> <?php echo $erro; ?>
+                <i class="fas fa-exclamation-triangle"></i> <?= e($erro) ?>
             </div>
         <?php endif; ?>
         
         <?php if($sucesso): ?>
             <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <?php echo $sucesso; ?>
+                <i class="fas fa-check-circle"></i> <?= e($sucesso) ?>
             </div>
             <script>
                 setTimeout(function() {
@@ -208,12 +222,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="POST" id="cadastroForm" onsubmit="return validarSenha()">
             <div class="form-group">
                 <label><i class="fas fa-user"></i> Nome completo:</label>
-                <input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" required>
+                <input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? e($_POST['nome']) : ''; ?>" required>
             </div>
             
             <div class="form-group">
                 <label><i class="fas fa-envelope"></i> Email:</label>
-                <input type="email" name="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
+                <input type="email" name="email" value="<?php echo isset($_POST['email']) ? e($_POST['email']) : ''; ?>" required>
             </div>
             
             <div class="form-group">
@@ -232,12 +246,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <div class="form-group">
                 <label><i class="fas fa-phone"></i> Telefone:</label>
-                <input type="tel" name="telefone" id="telefone" value="<?php echo isset($_POST['telefone']) ? htmlspecialchars($_POST['telefone']) : ''; ?>" placeholder="(67) 99999-9999" required>
+                <input type="tel" name="telefone" id="telefone" value="<?php echo isset($_POST['telefone']) ? e($_POST['telefone']) : ''; ?>" placeholder="(67) 99999-9999" required>
             </div>
             
             <div class="form-group">
                 <label><i class="fas fa-map-marker-alt"></i> Endereço:</label>
-                <input type="text" name="endereco" id="endereco" value="<?php echo isset($_POST['endereco']) ? htmlspecialchars($_POST['endereco']) : ''; ?>" placeholder="Rua, número, bairro, Campo Grande - MS" required>
+                <input type="text" name="endereco" id="endereco" value="<?php echo isset($_POST['endereco']) ? e($_POST['endereco']) : ''; ?>" placeholder="Rua, número, bairro, Campo Grande - MS" required>
                 <button type="button" onclick="obterCoordenadas()" class="btn-buscar">
                     <i class="fas fa-search"></i> Buscar coordenadas
                 </button>

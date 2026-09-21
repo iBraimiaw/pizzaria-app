@@ -1,6 +1,13 @@
 <?php
 // header.php - Header completo com acessibilidade
 // Deve ser incluído em todas as páginas
+
+// Garante o helper de escape mesmo que a página não tenha carregado includes/functions.php
+if (!function_exists('e')) {
+    function e($valor): string {
+        return htmlspecialchars((string)($valor ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -9,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Pizzaria do Bairro - A melhor pizza de Campo Grande - MS">
     <meta name="theme-color" content="#e74c3c">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Pizzaria do Bairro</title>
+    <title><?php echo isset($page_title) ? e($page_title) . ' - ' : ''; ?>Pizzaria do Bairro</title>
     
     <!-- CSS Principal -->
     <link rel="stylesheet" href="assets/css/style.css">
@@ -226,8 +233,8 @@
                     <?php endif; ?>
                     
                     <li class="user-info" role="none">
-                        <span aria-label="Usuário logado: <?php echo $_SESSION['usuario_nome']; ?>">
-                            👤 <?php echo $_SESSION['usuario_nome']; ?>
+                        <span aria-label="Usuário logado: <?= e($_SESSION['usuario_nome']) ?>">
+                            👤 <?= e($_SESSION['usuario_nome']) ?>
                         </span>
                         <a href="logout.php" class="logout-btn" role="menuitem" aria-label="Sair do sistema">
                             Sair

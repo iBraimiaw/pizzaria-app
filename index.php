@@ -575,10 +575,10 @@ require_once 'includes/functions.php';
                     <?php endif; ?>
                     <li class="user-menu" role="none">
                         <div class="user-avatar" aria-hidden="true">
-                            <?php echo strtoupper(substr($_SESSION['usuario_nome'], 0, 1)); ?>
+                            <?= e(mb_strtoupper(mb_substr($_SESSION['usuario_nome'], 0, 1, 'UTF-8'), 'UTF-8')) ?>
                         </div>
                         <div class="user-name">
-                            <i class="fas fa-user" aria-hidden="true"></i> <span aria-label="Usuário: <?php echo $_SESSION['usuario_nome']; ?>"><?php echo $_SESSION['usuario_nome']; ?></span>
+                            <i class="fas fa-user" aria-hidden="true"></i> <span aria-label="Usuário: <?= e($_SESSION['usuario_nome']) ?>"><?= e($_SESSION['usuario_nome']) ?></span>
                         </div>
                         <a href="logout.php" style="color: white; margin-left: 10px;" aria-label="Sair do sistema">
                             <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
@@ -620,12 +620,12 @@ require_once 'includes/functions.php';
                  onclick="window.location.href='cardapio.php'" 
                  role="button" 
                  tabindex="0"
-                 aria-label="Ver <?php echo $destaque['nome']; ?> no cardápio"
+                 aria-label="Ver <?= e($destaque['nome']) ?> no cardápio"
                  onkeypress="if(event.key === 'Enter') window.location.href='cardapio.php'">
-                <img src="<?php echo $destaque['imagem_url']; ?>" alt="<?php echo $destaque['nome']; ?>" class="destaque-img" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Pizza'">
+                <img src="<?= e(url_segura($destaque['imagem_url'])) ?>" alt="<?= e($destaque['nome']) ?>" class="destaque-img" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Pizza'">
                 <div class="destaque-info">
-                    <h3><?php echo $destaque['nome']; ?></h3>
-                    <p><?php echo substr($destaque['descricao'], 0, 80); ?>...</p>
+                    <h3><?= e($destaque['nome']) ?></h3>
+                    <p><?= e(mb_substr((string)$destaque['descricao'], 0, 80, 'UTF-8')) ?>...</p>
                     <div class="destaque-preco" aria-label="Preço: R$ <?php echo number_format($destaque['preco'], 2, ',', '.'); ?>">
                         R$ <?php echo number_format($destaque['preco'], 2, ',', '.'); ?>
                     </div>
@@ -679,7 +679,7 @@ require_once 'includes/functions.php';
             </div>
             <div class="footer-section">
                 <h3>📍 Endereço</h3>
-                <p><?php echo PIZZARIA_ENDERECO; ?></p>
+                <p><?= e(PIZZARIA_ENDERECO) ?></p>
                 <p><i class="fas fa-phone" aria-hidden="true"></i> (67) 99999-9999</p>
                 <p><i class="fas fa-envelope" aria-hidden="true"></i> contato@pizzariadobairro.com</p>
             </div>
