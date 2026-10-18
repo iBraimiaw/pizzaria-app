@@ -6,7 +6,9 @@ if(!isset($_SESSION['usuario_id'])) {
     exit;
 }
 
-$pedido_id = isset($_GET['id']) ? $_GET['id'] : 0;
+// ID só numérico; e a consulta abaixo filtra pelo usuário logado (anti-IDOR:
+// trocar ?id=5 por ?id=6 na URL não mostra o pedido de outra pessoa)
+$pedido_id = filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
 
 // Buscar dados do pedido
 $stmt = $pdo->prepare("
@@ -243,15 +245,15 @@ $itens = $stmt->fetchAll();
                     </div>
                     <div class="info-row">
                         <span class="info-label">Cliente:</span>
-                        <span class="info-value"><?php echo $pedido['cliente_nome']; ?></span>
+                        <span class="info-value"><?= e($pedido['cliente_nome']) ?></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Endereço de Entrega:</span>
-                        <span class="info-value"><?php echo $pedido['endereco_entrega']; ?></span>
+                        <span class="info-value"><?= e($pedido['endereco_entrega']) ?></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Forma de Pagamento:</span>
-                        <span class="info-value"><?php echo $pedido['forma_pagamento']; ?></span>
+                        <span class="info-value"><?= e($pedido['forma_pagamento']) ?></span>
                     </div>
                     <?php if($pedido['troco_para']): ?>
                     <div class="info-row">
@@ -278,12 +280,12 @@ $itens = $stmt->fetchAll();
                                 <?php 
                                 if(strpos($item['produto_nome'], '+') !== false): 
                                 ?>
-                                    <i class="fas fa-pizza-slice"></i> <?php echo $item['produto_nome']; ?>
+                                    <i class="fas fa-pizza-slice"></i> <?= e($item['produto_nome']) ?>
                                 <?php else: ?>
-                                    <i class="fas fa-utensils"></i> <?php echo $item['produto_nome']; ?>
+                                    <i class="fas fa-utensils"></i> <?= e($item['produto_nome']) ?>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo $item['quantidade']; ?></td>
+                            <td><?= (int) $item['quantidade'] ?></td>
                             <td>R$ <?php echo number_format($item['preco_unitario'], 2, ',', '.'); ?></td>
                             <td>R$ <?php echo number_format($item['quantidade'] * $item['preco_unitario'], 2, ',', '.'); ?></td>
                         </tr>

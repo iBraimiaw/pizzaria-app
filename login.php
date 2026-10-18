@@ -11,6 +11,15 @@ $sucesso = '';
 $modo_recuperar = isset($_GET['recuperar']) ? true : false;
 $token_valido = false;
 
+// Segurança: todo POST desta página precisa do token CSRF (senão: 403)
+verificar_csrf();
+
+// Aviso quando a sessão anterior expirou por inatividade
+if (isset($_SESSION['aviso_sessao'])) {
+    $erro = $_SESSION['aviso_sessao'];
+    unset($_SESSION['aviso_sessao']);
+}
+
 // Processar solicitação de recuperação de senha (DESATIVADO - mensagem informativa)
 if(isset($_POST['recuperar_senha'])) {
     // Função temporariamente desativada - apenas exibe mensagem
@@ -30,23 +39,55 @@ if(isset($_GET['token']) && !isset($_POST['redefinir_senha'])) {
 
 // Processar login normal
 if(isset($_POST['login'])) {
-    $email = $_POST['email'];
-    $senha = md5($_POST['senha']);
-    
-    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ? AND senha = ?");
-    $stmt->execute([$email, $senha]);
-    $usuario = $stmt->fetch();
-    
-    if($usuario) {
-        $_SESSION['usuario_id'] = $usuario['id'];
-        $_SESSION['usuario_nome'] = $usuario['nome'];
-        $_SESSION['usuario_email'] = $usuario['email'];
-        $_SESSION['tipo_usuario'] = $usuario['tipo_usuario'];
-        
-        header('Location: index.php');
-        exit;
+    $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $senha = (string) ($_POST['senha'] ?? '');
+    $ip = obter_ip_cliente();
+
+    // 1) Força bruta: muitas falhas recentes (e-mail + IP) = bloqueado por um tempo
+    $segundos_bloqueio = verificar_bloqueio($pdo, $email, $ip);
+
+    if ($segundos_bloqueio > 0) {
+        registrar_evento_seguranca($pdo, 'bloqueio', null, "Login bloqueado para $email");
+        $erro = 'Muitas tentativas erradas. Tente novamente em ' . formatar_tempo_bloqueio($segundos_bloqueio) . '.';
     } else {
-        $erro = 'Email ou senha incorretos!';
+        // 2) Busca só pelo e-mail; a senha é conferida no PHP (hash nunca vai no SQL)
+        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
+        $stmt->execute([$email]);
+        $usuario = $stmt->fetch();
+
+        if ($usuario) {
+            // Confere a senha e, se for MD5 antigo, já migra para bcrypt
+            $senha_ok = verificar_senha_e_migrar($pdo, $usuario, $senha);
+        } else {
+            simular_verificacao_senha($senha); // mesmo tempo de resposta (não revela se o e-mail existe)
+            $senha_ok = false;
+        }
+
+        if ($senha_ok) {
+            limpar_tentativas($pdo, $email, $ip);
+            renovar_sessao_apos_login(); // novo ID de sessão (anti session fixation)
+
+            $_SESSION['usuario_id'] = $usuario['id'];
+            $_SESSION['usuario_nome'] = $usuario['nome'];
+            $_SESSION['usuario_email'] = $usuario['email'];
+            $_SESSION['tipo_usuario'] = $usuario['tipo_usuario'];
+
+            registrar_evento_seguranca($pdo, 'login_ok', (int) $usuario['id']);
+            header('Location: index.php');
+            exit;
+        }
+
+        // 3) Falhou: anota a tentativa e avisa (mensagem igual para e-mail ou senha errados)
+        registrar_tentativa_falha($pdo, $email, $ip);
+        registrar_evento_seguranca($pdo, 'login_falha', $usuario ? (int) $usuario['id'] : null, "E-mail: $email");
+
+        $segundos_bloqueio = verificar_bloqueio($pdo, $email, $ip);
+        if ($segundos_bloqueio > 0) {
+            registrar_evento_seguranca($pdo, 'bloqueio', null, "Login bloqueado para $email");
+            $erro = 'Muitas tentativas erradas. Tente novamente em ' . formatar_tempo_bloqueio($segundos_bloqueio) . '.';
+        } else {
+            $erro = 'Email ou senha incorretos!';
+        }
     }
 }
 ?>
@@ -184,7 +225,7 @@ if(isset($_POST['login'])) {
             <h2><i class="fas fa-key"></i> Recuperar Senha</h2>
             
             <?php if($erro): ?>
-                <div class="alert alert-danger"><?php echo $erro; ?></div>
+                <div class="alert alert-danger"><?= e($erro) ?></div>
             <?php endif; ?>
             
             <div class="alert alert-info">
@@ -195,6 +236,7 @@ if(isset($_POST['login'])) {
             </div>
             
             <form method="POST">
+                <?= campo_csrf() ?>
                 <div class="form-group">
                     <label><i class="fas fa-envelope"></i> E-mail:</label>
                     <input type="email" name="email" placeholder="seuemail@exemplo.com">
@@ -212,10 +254,11 @@ if(isset($_POST['login'])) {
             <h2><i class="fas fa-pizza-slice"></i> Login</h2>
             
             <?php if($erro): ?>
-                <div class="alert alert-danger"><?php echo $erro; ?></div>
+                <div class="alert alert-danger"><?= e($erro) ?></div>
             <?php endif; ?>
             
             <form method="POST">
+                <?= campo_csrf() ?>
                 <div class="form-group">
                     <label><i class="fas fa-envelope"></i> Email:</label>
                     <input type="email" name="email" required>
@@ -227,7 +270,7 @@ if(isset($_POST['login'])) {
                 </div>
                 
                 <div class="forgot-password">
-                    <a href="?recuperar=1"><i class="fas fa-question-circle"></i> Esqueceu a senha?</a>
+                    <a href="esqueceu-senha.php"><i class="fas fa-question-circle"></i> Esqueceu a senha?</a>
                 </div>
                 
                 <button type="submit" name="login" class="btn-login">

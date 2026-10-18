@@ -1,0 +1,17 @@
+# .htaccess da raiz do site
+#
+# POR QUÊ: no Docker a pasta inteira do projeto vira a raiz do Apache
+# (/var/www/html). Sem estas regras, qualquer pessoa conseguiria baixar
+# pelo navegador arquivos que NÃO são páginas: o histórico do git (.git/),
+# os segredos (.env), a estrutura do banco (database/schema.sql) e a
+# configuração do Docker. Aqui bloqueamos tudo isso com "403 Proibido".
+
+# 1) Arquivos e pastas que começam com ponto: .git/, .env, .env.example, .gitignore...
+RedirectMatch 403 /\.
+
+# 2) Pastas internas: código incluído pelo PHP, banco, documentação e scripts
+RedirectMatch 403 ^/(includes|database|docs|scripts)(/|$)
+
+# 3) Arquivos de infraestrutura soltos na raiz
+RedirectMatch 403 (?i)/(docker-compose\.ya?ml|Dockerfile)$
+RedirectMatch 403 (?i)\.(sql|sh|md|log)$

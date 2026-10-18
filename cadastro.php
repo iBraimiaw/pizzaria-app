@@ -10,30 +10,47 @@ $erro = '';
 $sucesso = '';
 
 if($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome = $_POST['nome'];
-    $email = $_POST['email'];
-    $senha = $_POST['senha'];
-    $confirmar_senha = $_POST['confirmar_senha'];
-    $endereco = $_POST['endereco'];
-    $telefone = $_POST['telefone'];
-    
+    verificar_csrf(); // formulário precisa ter vindo do nosso site
+
+    // Lê e "limpa" cada campo (nunca confiar no que vem do navegador)
+    $nome = trim((string) ($_POST['nome'] ?? ''));
+    $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $senha = (string) ($_POST['senha'] ?? '');
+    $confirmar_senha = (string) ($_POST['confirmar_senha'] ?? '');
+    $endereco = trim((string) ($_POST['endereco'] ?? ''));
+    $telefone = trim((string) ($_POST['telefone'] ?? ''));
+    $telefone_digitos = preg_replace('/\D/', '', $telefone); // só os números
+    $problemas_senha = validar_forca_senha($senha);
+
+    if($nome === '' || mb_strlen($nome) > 100) {
+        $erro = 'Informe seu nome (até 100 caracteres).';
+    }
+    elseif(!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) {
+        $erro = 'Informe um e-mail válido.';
+    }
+    elseif(strlen($telefone_digitos) < 10 || strlen($telefone_digitos) > 11) {
+        $erro = 'Informe um telefone válido com DDD.';
+    }
+    elseif($endereco === '' || mb_strlen($endereco) > 255) {
+        $erro = 'Informe seu endereço (até 255 caracteres).';
+    }
     // Validar se as senhas coincidem
-    if($senha !== $confirmar_senha) {
+    elseif($senha !== $confirmar_senha) {
         $erro = 'As senhas não coincidem!';
     }
-    // Validar força da senha: pelo menos uma letra maiúscula e uma minúscula
-    elseif(!preg_match('/[A-Z]/', $senha) || !preg_match('/[a-z]/', $senha)) {
-        $erro = 'A senha deve conter pelo menos uma letra maiúscula e uma letra minúscula!';
-    }
-    // Validar tamanho mínimo (opcional, mas recomendado)
-    elseif(strlen($senha) < 6) {
-        $erro = 'A senha deve ter no mínimo 6 caracteres!';
+    // Política de senha forte conferida NO SERVIDOR (o JS pode ser burlado)
+    elseif($problemas_senha) {
+        $erro = mensagem_senha_fraca($problemas_senha);
     }
     else {
-        $senha_hash = md5($senha); // Mantendo o padrão do sistema
-        $latitude = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
-        $longitude = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
-        
+        $senha_hash = gerar_hash_senha($senha); // bcrypt (nunca MD5)
+
+        // Coordenadas: só aceita número dentro do intervalo válido do planeta
+        $latitude = filter_var($_POST['latitude'] ?? '', FILTER_VALIDATE_FLOAT, ['options' => ['min_range' => -90, 'max_range' => 90]]);
+        $longitude = filter_var($_POST['longitude'] ?? '', FILTER_VALIDATE_FLOAT, ['options' => ['min_range' => -180, 'max_range' => 180]]);
+        $latitude = $latitude === false ? null : $latitude;
+        $longitude = $longitude === false ? null : $longitude;
+
         // Verificar se email já existe
         $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = ?");
         $stmt->execute([$email]);
@@ -190,13 +207,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         <?php if($erro): ?>
             <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i> <?php echo $erro; ?>
+                <i class="fas fa-exclamation-triangle"></i> <?= e($erro) ?>
             </div>
         <?php endif; ?>
         
         <?php if($sucesso): ?>
             <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <?php echo $sucesso; ?>
+                <i class="fas fa-check-circle"></i> <?= e($sucesso) ?>
             </div>
             <script>
                 setTimeout(function() {
@@ -206,6 +223,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
         
         <form method="POST" id="cadastroForm" onsubmit="return validarSenha()">
+            <?= campo_csrf() ?>
             <div class="form-group">
                 <label><i class="fas fa-user"></i> Nome completo:</label>
                 <input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" required>
@@ -221,7 +239,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="password" name="senha" id="senha" required onkeyup="validarForcaSenha()">
                 <div class="senha-requisitos" id="requisitosMaiuscula">🔤 Pelo menos uma letra MAIÚSCULA</div>
                 <div class="senha-requisitos" id="requisitosMinuscula">🔤 Pelo menos uma letra minúscula</div>
-                <div class="senha-requisitos" id="requisitosTamanho">📏 Mínimo 6 caracteres</div>
+                <div class="senha-requisitos" id="requisitosTamanho">📏 Mínimo 8 caracteres</div>
+                <div class="senha-requisitos" id="requisitosEspecial">🔣 Pelo menos um número e um caractere especial</div>
             </div>
             
             <div class="form-group">
@@ -274,7 +293,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             const temMaiuscula = /[A-Z]/.test(senha);
             const temMinuscula = /[a-z]/.test(senha);
-            const tamanhoValido = senha.length >= 6;
+            const tamanhoValido = senha.length >= 8;
+            const temNumeroEEspecial = /[0-9]/.test(senha) && /[^A-Za-z0-9]/.test(senha);
+            const reqEspecial = document.getElementById('requisitosEspecial');
+            reqEspecial.className = 'senha-requisitos ' + (temNumeroEEspecial ? 'valid' : 'invalid');
+            reqEspecial.innerHTML = (temNumeroEEspecial ? '✅' : '❌') + ' Pelo menos um número e um caractere especial';
             
             const reqMaiuscula = document.getElementById('requisitosMaiuscula');
             const reqMinuscula = document.getElementById('requisitosMinuscula');
@@ -287,7 +310,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Atualizar ícones
             reqMaiuscula.innerHTML = (temMaiuscula ? '✅' : '❌') + ' Pelo menos uma letra MAIÚSCULA';
             reqMinuscula.innerHTML = (temMinuscula ? '✅' : '❌') + ' Pelo menos uma letra minúscula';
-            reqTamanho.innerHTML = (tamanhoValido ? '✅' : '❌') + ' Mínimo 6 caracteres';
+            reqTamanho.innerHTML = (tamanhoValido ? '✅' : '❌') + ' Mínimo 8 caracteres';
             
             validarConfirmacaoSenha();
         }
@@ -330,11 +353,18 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 return false;
             }
             
-            if (senha.length < 6) {
-                alert('A senha deve ter no mínimo 6 caracteres!');
+            if (senha.length < 8) {
+                alert('A senha deve ter no mínimo 8 caracteres!');
                 return false;
             }
-            
+
+            if (!/[0-9]/.test(senha) || !/[^A-Za-z0-9]/.test(senha)) {
+                alert('A senha deve ter pelo menos um número e um caractere especial!');
+                return false;
+            }
+
+            // Obs.: esta checagem é só para ajudar o usuário. A regra "de verdade"
+            // é conferida de novo no servidor (validar_forca_senha no PHP).
             return true;
         }
         

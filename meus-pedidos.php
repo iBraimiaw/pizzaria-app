@@ -405,8 +405,8 @@ $status_map = [
                 <?php endif; ?>
                 <li class="user-info">
                     <i class="fas fa-user-circle"></i>
-                    <span><?php echo $_SESSION['usuario_nome']; ?></span>
-                    <a href="logout.php" class="logout-btn">
+                    <span><?= e($_SESSION['usuario_nome']) ?></span>
+                    <a href="logout.php?token=<?= e(csrf_token()) ?>" class="logout-btn">
                         <i class="fas fa-sign-out-alt"></i> Sair
                     </a>
                 </li>
@@ -446,11 +446,11 @@ $status_map = [
                         <div class="pedido-info">
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-map-marker-alt"></i> Endereço</div>
-                                <div class="info-value"><?php echo $pedido['endereco_entrega']; ?></div>
+                                <div class="info-value"><?= e($pedido['endereco_entrega']) ?></div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-tachometer-alt"></i> Distância</div>
-                                <div class="info-value"><?php echo $pedido['distancia_km']; ?> km</div>
+                                <div class="info-value"><?= e($pedido['distancia_km']) ?> km</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-truck"></i> Taxa entrega</div>
@@ -458,7 +458,7 @@ $status_map = [
                             </div>
                             <div class="info-item">
                                 <div class="info-label"><i class="fas fa-credit-card"></i> Pagamento</div>
-                                <div class="info-value"><?php echo $pedido['forma_pagamento']; ?></div>
+                                <div class="info-value"><?= e($pedido['forma_pagamento']) ?></div>
                             </div>
                         </div>
                         
@@ -466,7 +466,7 @@ $status_map = [
                             <span class="status-badge" style="background: <?php echo $status_map[$pedido['status']]['cor']; ?>20; color: <?php echo $status_map[$pedido['status']]['cor']; ?>; border: 1px solid <?php echo $status_map[$pedido['status']]['cor']; ?>">
                                 <?php echo $status_map[$pedido['status']]['texto']; ?>
                             </span>
-                            <button class="btn-detalhes" onclick="verDetalhes(<?php echo $pedido['id']; ?>)">
+                            <button class="btn-detalhes" onclick="verDetalhes(<?= (int) $pedido['id'] ?>)">
                                 <i class="fas fa-eye"></i> Ver detalhes
                             </button>
                         </div>
@@ -492,6 +492,14 @@ $status_map = [
     </div>
 
     <script>
+        // Segurança (XSS): texto vindo do banco é "escapado" antes de entrar no innerHTML,
+        // assim um endereço como <img onerror=...> aparece como texto e não executa.
+        function escaparHtml(texto) {
+            const div = document.createElement('div');
+            div.textContent = texto == null ? '' : String(texto);
+            return div.innerHTML;
+        }
+
         function verDetalhes(pedidoId) {
             const modal = document.getElementById('detalhesModal');
             const conteudo = document.getElementById('detalhesConteudo');
@@ -505,10 +513,10 @@ $status_map = [
                     let html = `
                         <div style="margin-bottom: 20px;">
                             <p><strong>📅 Data:</strong> ${new Date(data.pedido.data_pedido).toLocaleString('pt-BR')}</p>
-                            <p><strong>📍 Endereço:</strong> ${data.pedido.endereco_entrega}</p>
-                            <p><strong>📏 Distância:</strong> ${data.pedido.distancia_km} km</p>
+                            <p><strong>📍 Endereço:</strong> ${escaparHtml(data.pedido.endereco_entrega)}</p>
+                            <p><strong>📏 Distância:</strong> ${escaparHtml(data.pedido.distancia_km)} km</p>
                             <p><strong>🚚 Taxa entrega:</strong> R$ ${parseFloat(data.pedido.taxa_entrega).toFixed(2)}</p>
-                            <p><strong>💳 Pagamento:</strong> ${data.pedido.forma_pagamento}</p>
+                            <p><strong>💳 Pagamento:</strong> ${escaparHtml(data.pedido.forma_pagamento)}</p>
                         </div>
                         
                         <h3>Itens do Pedido:</h3>
@@ -527,8 +535,8 @@ $status_map = [
                     data.itens.forEach(item => {
                         html += `
                             <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 10px;">${item.produto_nome}</td>
-                                <td style="padding: 10px; text-align: center;">${item.quantidade}</td>
+                                <td style="padding: 10px;">${escaparHtml(item.produto_nome)}</td>
+                                <td style="padding: 10px; text-align: center;">${escaparHtml(item.quantidade)}</td>
                                 <td style="padding: 10px; text-align: right;">R$ ${parseFloat(item.preco_unitario).toFixed(2)}</td>
                                 <td style="padding: 10px; text-align: right;">R$ ${(item.quantidade * item.preco_unitario).toFixed(2)}</td>
                             </tr>

@@ -1,0 +1,3 @@
+# Esta pasta guarda o código dos MICROSERVIÇOS, que rodam em containers próprios.
+# O site (porta 8080) não deve servir esses arquivos: bloqueamos o acesso web aqui.
+Require all denied

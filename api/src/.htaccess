@@ -1,0 +1,2 @@
+# Código interno da API: nunca acessível direto pelo navegador.
+Require all denied
