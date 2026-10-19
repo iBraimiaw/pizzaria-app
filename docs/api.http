@@ -1,0 +1,136 @@
+### =====================================================================
+### API da Pizzaria — requisições prontas para a extensão "REST Client"
+### do VS Code (humao.rest-client). Clique em "Send Request" acima de cada uma.
+###
+### Ordem sugerida na apresentação: health -> login -> me -> produtos ->
+### criar pedido -> listar -> ataques (sem token, token adulterado, IDOR...).
+### =====================================================================
+
+@base = http://localhost:8080/api/v1
+
+### 1. Health (público)
+GET {{base}}/health
+
+### 2. Login -> guarda o token na variável "login" (usada nas próximas)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@pizzaria.com",
+  "senha": "Demo@123"
+}
+
+###
+@token = {{login.response.body.token}}
+
+### 3. Quem sou eu? (com token -> 200)
+GET {{base}}/auth/me
+Authorization: Bearer {{token}}
+
+### 4. Sem token -> 401
+GET {{base}}/auth/me
+
+### 5. Token adulterado (conteúdo trocado para "sub":"2", assinatura antiga) -> 401
+GET {{base}}/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiaXNzIjoicGl6emFyaWEtYXBpIiwiaWF0IjoxNzYwMDAwMDAwLCJleHAiOjE5OTk5OTk5OTl9.yrvYunl81huTt087A2S-zWFLGBMQUJ0v_absFVRDWxs
+
+### 6. Token com "alg":"none" (sem assinatura) -> 401
+GET {{base}}/auth/me
+Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxIiwiaXNzIjoicGl6emFyaWEtYXBpIiwiaWF0IjoxNzYwMDAwMDAwLCJleHAiOjE5OTk5OTk5OTl9.
+
+### 7. Token expirado -> 401 token_expirado
+# Gere um no terminal e cole abaixo:
+#   docker compose exec web php api/bin/gerar-token.php 1 -60
+GET {{base}}/auth/me
+Authorization: Bearer COLE_AQUI_O_TOKEN_EXPIRADO
+
+### 8. Senha errada -> 401 (5 erros em 15 min -> 429 com Retry-After)
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "demo@pizzaria.com", "senha": "senha-errada" }
+
+### 9. Categorias
+GET {{base}}/categorias
+
+### 10. Produtos (paginação padrão: 10 por página)
+GET {{base}}/produtos
+
+### 11. Produtos filtrados: categoria Bebidas
+GET {{base}}/produtos?categoria=3
+
+### 12. Busca + paginação
+GET {{base}}/produtos?busca=pizza&pagina=1&limite=2
+
+### 13. Teto de paginação: pede 9999, recebe 50
+GET {{base}}/produtos?limite=9999
+
+### 14. Um produto
+GET {{base}}/produtos/2
+
+### 15. Produto inexistente -> 404
+GET {{base}}/produtos/999
+
+### 16. Criar pedido -> 201. O "preco": 0.01 é IGNORADO: vale o preço do banco.
+# @name novoPedido
+POST {{base}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "itens": [
+    { "produto_id": 2, "quantidade": 2, "preco": 0.01 },
+    { "produto_id": 11, "quantidade": 1 }
+  ],
+  "forma_pagamento": "Dinheiro",
+  "troco_para": 150
+}
+
+### 17. Meus pedidos
+GET {{base}}/pedidos
+Authorization: Bearer {{token}}
+
+### 18. Detalhe do pedido recém-criado
+GET {{base}}/pedidos/{{novoPedido.response.body.dados.id}}
+Authorization: Bearer {{token}}
+
+### 19. Validação: quantidade 0 e forma de pagamento inválida -> 422
+POST {{base}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "itens": [{ "produto_id": 1, "quantidade": 0 }], "forma_pagamento": "Bitcoin" }
+
+### 20. JSON inválido -> 400
+POST {{base}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "itens": [ isto não é json
+
+### 21. Método errado -> 405 com header Allow
+DELETE {{base}}/produtos/2
+
+### 22. Rota inexistente -> 404
+GET {{base}}/nao-existe
+
+### =====================================================================
+### IDOR: login com OUTRO usuário e tentar ver o pedido do demo -> 404
+### (o 2º usuário é criado no cadastro do site ou pelo SQL do README da demo)
+### =====================================================================
+
+# @name loginOutro
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "outro@pizzaria.com", "senha": "Outra@123" }
+
+###
+GET {{base}}/pedidos/{{novoPedido.response.body.dados.id}}
+Authorization: Bearer {{loginOutro.response.body.token}}
+
+### CORS: pré-checagem do navegador (OPTIONS) -> 204
+OPTIONS {{base}}/pedidos
+Origin: http://localhost:3000
+Access-Control-Request-Method: POST

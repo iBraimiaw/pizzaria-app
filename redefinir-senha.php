@@ -1,20 +1,35 @@
 <?php
 require_once 'includes/functions.php';
 
-$token = isset($_GET['token']) ? $_GET['token'] : '';
+$token = (string) ($_POST['token'] ?? ($_GET['token'] ?? ''));
 $erro = '';
 $sucesso = '';
+$recuperacao = null;
 
-// Verificar se o token é válido
-if($token) {
+/**
+ * Procura um pedido de recuperação VÁLIDO para o token do link:
+ * não usado, não expirado. O banco guarda só o hash sha256 do token,
+ * então calculamos o hash do que veio na URL e comparamos.
+ */
+function buscar_recuperacao_valida(PDO $pdo, string $token): ?array
+{
+    // Token legítimo = 64 caracteres hexadecimais; qualquer outra coisa nem vai ao banco
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        return null;
+    }
     $stmt = $pdo->prepare("
         SELECT rs.*, u.id as usuario_id, u.nome 
         FROM recuperacao_senha rs
         JOIN usuarios u ON rs.usuario_id = u.id
         WHERE rs.token = ? AND rs.usado = FALSE AND rs.expiracao > NOW()
     ");
-    $stmt->execute([$token]);
-    $recuperacao = $stmt->fetch();
+    $stmt->execute([hash('sha256', $token)]);
+    return $stmt->fetch() ?: null;
+}
+
+// Verificar se o token é válido
+if($token) {
+    $recuperacao = buscar_recuperacao_valida($pdo, $token);
     
     if(!$recuperacao) {
         $erro = "Link inválido ou expirado. Solicite uma nova recuperação.";
@@ -22,37 +37,27 @@ if($token) {
 }
 
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['redefinir'])) {
-    $token = $_POST['token'];
-    $nova_senha = $_POST['nova_senha'];
-    $confirmar_senha = $_POST['confirmar_senha'];
-    
-    // Validar token novamente
-    $stmt = $pdo->prepare("
-        SELECT rs.*, u.id as usuario_id 
-        FROM recuperacao_senha rs
-        JOIN usuarios u ON rs.usuario_id = u.id
-        WHERE rs.token = ? AND rs.usado = FALSE AND rs.expiracao > NOW()
-    ");
-    $stmt->execute([$token]);
-    $recuperacao = $stmt->fetch();
+    verificar_csrf();
+
+    $nova_senha = (string) ($_POST['nova_senha'] ?? '');
+    $confirmar_senha = (string) ($_POST['confirmar_senha'] ?? '');
+    $problemas_senha = validar_forca_senha($nova_senha);
     
     if(!$recuperacao) {
         $erro = "Link inválido ou expirado. Solicite uma nova recuperação.";
     } elseif($nova_senha !== $confirmar_senha) {
         $erro = "As senhas não coincidem!";
-    } elseif(!preg_match('/[A-Z]/', $nova_senha) || !preg_match('/[a-z]/', $nova_senha)) {
-        $erro = "A senha deve conter pelo menos uma letra maiúscula e uma letra minúscula!";
-    } elseif(strlen($nova_senha) < 6) {
-        $erro = "A senha deve ter no mínimo 6 caracteres!";
+    } elseif($problemas_senha) {
+        $erro = mensagem_senha_fraca($problemas_senha); // política forte conferida no servidor
     } else {
-        // Atualizar senha do usuário
-        $senha_hash = md5($nova_senha);
-        $stmt = $pdo->prepare("UPDATE usuarios SET senha = ? WHERE id = ?");
-        $stmt->execute([$senha_hash, $recuperacao['usuario_id']]);
+        // Atualizar senha do usuário (bcrypt)
+        atualizar_hash_senha($pdo, (int) $recuperacao['usuario_id'], $nova_senha);
         
-        // Marcar token como usado
-        $stmt = $pdo->prepare("UPDATE recuperacao_senha SET usado = TRUE WHERE id = ?");
-        $stmt->execute([$recuperacao['id']]);
+        // Uso único: marca este e qualquer outro link pendente do usuário como usado
+        $stmt = $pdo->prepare("UPDATE recuperacao_senha SET usado = TRUE WHERE usuario_id = ?");
+        $stmt->execute([$recuperacao['usuario_id']]);
+
+        registrar_evento_seguranca($pdo, 'senha_redefinida', (int) $recuperacao['usuario_id']);
         
         $sucesso = "Senha redefinida com sucesso! Você já pode fazer login.";
         // Redirecionar após 3 segundos
@@ -160,22 +165,24 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['redefinir'])) {
         <p class="subtitle">Crie uma nova senha para sua conta</p>
         
         <?php if($erro): ?>
-            <div class="alert alert-danger"><?php echo $erro; ?></div>
+            <div class="alert alert-danger"><?= e($erro) ?></div>
         <?php endif; ?>
         
         <?php if($sucesso): ?>
-            <div class="alert alert-success"><?php echo $sucesso; ?></div>
+            <div class="alert alert-success"><?= e($sucesso) ?></div>
         <?php endif; ?>
         
-        <?php if(!$erro && !$sucesso && $token && $recuperacao): ?>
+        <?php if(!$sucesso && $recuperacao): /* token válido: mostra o form (mesmo se a senha digitada foi recusada) */ ?>
             <form method="POST">
-                <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="token" value="<?= e($token) ?>">
                 <div class="form-group">
                     <label><i class="fas fa-key"></i> Nova Senha:</label>
                     <input type="password" name="nova_senha" id="nova_senha" required onkeyup="validarForcaSenha()">
                     <div class="senha-requisitos" id="reqMaiuscula">❌ Pelo menos uma letra MAIÚSCULA</div>
                     <div class="senha-requisitos" id="reqMinuscula">❌ Pelo menos uma letra minúscula</div>
-                    <div class="senha-requisitos" id="reqTamanho">❌ Mínimo 6 caracteres</div>
+                    <div class="senha-requisitos" id="reqTamanho">❌ Mínimo 8 caracteres</div>
+                    <div class="senha-requisitos" id="reqEspecial">❌ Pelo menos um número e um caractere especial</div>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-check-circle"></i> Confirmar Senha:</label>
@@ -196,7 +203,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['redefinir'])) {
             const senha = document.getElementById('nova_senha').value;
             const temMaiuscula = /[A-Z]/.test(senha);
             const temMinuscula = /[a-z]/.test(senha);
-            const tamanhoValido = senha.length >= 6;
+            const tamanhoValido = senha.length >= 8;
+            const temNumeroEEspecial = /[0-9]/.test(senha) && /[^A-Za-z0-9]/.test(senha);
+            document.getElementById('reqEspecial').innerHTML = (temNumeroEEspecial ? '✅' : '❌') + ' Pelo menos um número e um caractere especial';
+            document.getElementById('reqEspecial').className = 'senha-requisitos ' + (temNumeroEEspecial ? 'valid' : 'invalid');
             
             document.getElementById('reqMaiuscula').innerHTML = (temMaiuscula ? '✅' : '❌') + ' Pelo menos uma letra MAIÚSCULA';
             document.getElementById('reqMaiuscula').className = 'senha-requisitos ' + (temMaiuscula ? 'valid' : 'invalid');
@@ -204,7 +214,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['redefinir'])) {
             document.getElementById('reqMinuscula').innerHTML = (temMinuscula ? '✅' : '❌') + ' Pelo menos uma letra minúscula';
             document.getElementById('reqMinuscula').className = 'senha-requisitos ' + (temMinuscula ? 'valid' : 'invalid');
             
-            document.getElementById('reqTamanho').innerHTML = (tamanhoValido ? '✅' : '❌') + ' Mínimo 6 caracteres';
+            document.getElementById('reqTamanho').innerHTML = (tamanhoValido ? '✅' : '❌') + ' Mínimo 8 caracteres';
             document.getElementById('reqTamanho').className = 'senha-requisitos ' + (tamanhoValido ? 'valid' : 'invalid');
             
             validarConfirmacao();

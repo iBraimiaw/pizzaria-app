@@ -1,19 +1,29 @@
 <?php
+/**
+ * buscar-detalhes-pedido.php — devolve (JSON) os detalhes de UM pedido do
+ * usuário logado. Usado pelo modal "detalhes" de meus-pedidos.php.
+ */
 require_once 'includes/functions.php';
 
+header('Content-Type: application/json; charset=utf-8');
+
 if(!isset($_SESSION['usuario_id'])) {
+    http_response_code(401);
     echo json_encode(['error' => 'Não autorizado']);
     exit;
 }
 
-$pedido_id = $_GET['pedido_id'] ?? 0;
+$pedido_id = filter_var($_GET['pedido_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
 
-// Verificar se o pedido pertence ao usuário
+// Controle de acesso (anti-IDOR): o pedido precisa ser DO usuário logado.
+// Sem o "AND usuario_id = ?", bastaria trocar o número na URL para ver
+// o pedido (e o endereço) de outro cliente.
 $stmt = $pdo->prepare("SELECT * FROM pedidos WHERE id = ? AND usuario_id = ?");
 $stmt->execute([$pedido_id, $_SESSION['usuario_id']]);
 $pedido = $stmt->fetch();
 
 if(!$pedido) {
+    http_response_code(404);
     echo json_encode(['error' => 'Pedido não encontrado']);
     exit;
 }
@@ -42,4 +52,3 @@ echo json_encode([
     'pedido' => $pedido,
     'itens' => $itens
 ]);
-?>

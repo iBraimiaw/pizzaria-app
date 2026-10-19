@@ -9,7 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Pizzaria do Bairro - A melhor pizza de Campo Grande - MS">
     <meta name="theme-color" content="#e74c3c">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Pizzaria do Bairro</title>
+    <!-- Token CSRF para chamadas fetch()/AJAX: enviar no header "X-CSRF-Token" -->
+    <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
+    <title><?= isset($page_title) ? e($page_title) . ' - ' : '' ?>Pizzaria do Bairro</title>
     
     <!-- CSS Principal -->
     <link rel="stylesheet" href="assets/css/style.css">
@@ -226,10 +228,10 @@
                     <?php endif; ?>
                     
                     <li class="user-info" role="none">
-                        <span aria-label="Usuário logado: <?php echo $_SESSION['usuario_nome']; ?>">
-                            👤 <?php echo $_SESSION['usuario_nome']; ?>
+                        <span aria-label="Usuário logado: <?= e($_SESSION['usuario_nome']) ?>">
+                            👤 <?= e($_SESSION['usuario_nome']) ?>
                         </span>
-                        <a href="logout.php" class="logout-btn" role="menuitem" aria-label="Sair do sistema">
+                        <a href="logout.php?token=<?= e(csrf_token()) ?>" class="logout-btn" role="menuitem" aria-label="Sair do sistema">
                             Sair
                         </a>
                     </li>

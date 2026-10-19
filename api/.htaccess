@@ -1,0 +1,12 @@
+# Front controller da API: TODA URL que não é um arquivo real
+# (ex.: /api/v1/produtos/3) é entregue para o index.php, que decide a rota.
+RewriteEngine On
+
+# Garante que o PHP receba o header "Authorization: Bearer <token>"
+# (alguns modos do Apache descartam esse header por padrão).
+CGIPassAuth On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Arquivo que existe de verdade (ex.: openapi.yaml) é servido normalmente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [QSA,L]

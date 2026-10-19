@@ -1,0 +1,86 @@
+# Sobe o projeto inteiro com: docker compose up -d --build
+#   web         -> http://localhost:8080  (site PHP)
+#   entrega     -> http://localhost:8081  (microserviço de frete/tempo, API JSON)
+#   phpmyadmin  -> http://localhost:8082  (ver o banco pelo navegador)
+# Valores sensíveis vêm do arquivo .env (copie de .env.example).
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html          # monta o código: editou, recarregou, viu
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_URL: ${APP_URL:-http://localhost:8080}   # link do "esqueci a senha"
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-pizzaria}
+      DB_USER: ${DB_USER:-pizzaria}
+      DB_PASS: ${DB_PASS:-pizzaria123}
+      JWT_SECRET: ${JWT_SECRET:-segredo-dev-troque-em-producao}
+      # API REST: quais sites podem chamar a API pelo navegador (vazio = nenhum, * = todos)
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      ENTREGA_SERVICE_URL: ${ENTREGA_SERVICE_URL:-http://entrega/}
+      ENTREGA_SERVICE_KEY: ${ENTREGA_SERVICE_KEY:-chave-dev-entrega}
+    depends_on:
+      db:
+        condition: service_healthy   # só sobe depois que o banco estiver pronto
+      entrega:
+        # Só "iniciado", não "healthy": se o microserviço cair, o site
+        # continua funcionando com o cálculo local (fallback).
+        condition: service_started
+
+  # Microserviço de entrega: container e código próprios, SEM acesso ao banco.
+  # O site conversa com ele por HTTP (http://entrega/) usando a X-Service-Key.
+  entrega:
+    build: ./services/entrega
+    ports:
+      - "8081:80"                  # exposto só para demonstrar com curl/Postman
+    volumes:
+      - ./services/entrega/src:/var/www/src        # editou, recarregou, viu
+      - ./services/entrega/public:/var/www/public
+    environment:
+      APP_ENV: ${APP_ENV:-dev}     # fora de 'dev', recusa a chave padrão do repositório
+      ENTREGA_SERVICE_KEY: ${ENTREGA_SERVICE_KEY:-chave-dev-entrega}  # mesma chave do web
+      PIZZARIA_LAT: ${PIZZARIA_LAT:--20.4628}
+      PIZZARIA_LNG: ${PIZZARIA_LNG:--54.6152}
+      RAIO_MAXIMO_KM: ${RAIO_MAXIMO_KM:-15}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  db:
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-pizzaria}
+      MYSQL_USER: ${DB_USER:-pizzaria}
+      MYSQL_PASSWORD: ${DB_PASS:-pizzaria123}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-root123}
+    volumes:
+      - db_data:/var/lib/mysql                                   # dados persistem
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      # Conecta via TCP e consulta uma tabela do seed: só fica "healthy"
+      # quando o MySQL aceitou conexões E o schema.sql já foi executado.
+      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD -e 'SELECT 1 FROM usuarios LIMIT 1' $$MYSQL_DATABASE"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    ports:
+      - "8082:80"
+    environment:
+      PMA_HOST: db
+    depends_on:
+      - db
+
+volumes:
+  db_data:

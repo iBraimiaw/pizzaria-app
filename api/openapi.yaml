@@ -1,0 +1,399 @@
+# Documentação da API REST da Pizzaria no formato OpenAPI 3.
+# Dá para abrir em https://editor.swagger.io (File > Import file) e testar por lá.
+# Também é servido pelo site em: http://localhost:8080/api/openapi.yaml
+openapi: 3.0.3
+info:
+  title: Pizzaria do Bairro - API REST
+  version: 1.0.0
+  description: |
+    API JSON da pizzaria: cardápio público e pedidos do cliente autenticado.
+
+    **Autenticação:** faça `POST /auth/login` e envie o token recebido no header
+    `Authorization: Bearer <token>`. O token (JWT HS256) vale **1 hora**.
+
+    **Erros:** sempre no formato `{"erro": {"codigo": "...", "mensagem": "..."}}`.
+
+    **Segurança:**
+    - preço sempre vem do banco (o cliente envia só `produto_id` e `quantidade`);
+    - cada usuário só enxerga os próprios pedidos (pedido de outro = 404);
+    - login com limite de tentativas (5 falhas em 15 min = 429), igual ao site;
+    - corpo da requisição limitado a 16 KB.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Docker local
+
+tags:
+  - name: Sistema
+  - name: Autenticação
+  - name: Cardápio
+  - name: Pedidos
+
+paths:
+  /health:
+    get:
+      tags: [Sistema]
+      summary: A API está no ar?
+      responses:
+        '200':
+          description: API e banco funcionando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  versao: { type: string, example: 1.0.0 }
+                  banco: { type: string, example: ok }
+                  timestamp: { type: string, format: date-time }
+        '503':
+          description: Banco indisponível (status "degradado")
+
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      summary: Troca e-mail e senha por um token JWT
+      description: |
+        Usa as mesmas regras do login do site: bcrypt, migração automática de
+        senhas MD5 antigas e bloqueio por força bruta (contador compartilhado com o site).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email: { type: string, format: email, maxLength: 150, example: demo@pizzaria.com }
+                senha: { type: string, maxLength: 200, example: Demo@123 }
+      responses:
+        '200':
+          description: Login aceito
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.assinatura }
+                  tipo: { type: string, example: Bearer }
+                  expira_em: { type: string, format: date-time }
+                  expira_em_segundos: { type: integer, example: 3600 }
+                  usuario: { $ref: '#/components/schemas/Usuario' }
+        '400': { $ref: '#/components/responses/JsonInvalido' }
+        '401':
+          description: E-mail ou senha incorretos (mensagem genérica, não revela qual)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '413': { $ref: '#/components/responses/CorpoGrande' }
+        '415': { $ref: '#/components/responses/TipoNaoSuportado' }
+        '422': { $ref: '#/components/responses/Validacao' }
+        '429':
+          description: Muitas tentativas erradas (5 em 15 minutos)
+          headers:
+            Retry-After:
+              description: Segundos até liberar
+              schema: { type: integer }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /auth/me:
+    get:
+      tags: [Autenticação]
+      summary: Dados do dono do token
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usuario: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+
+  /categorias:
+    get:
+      tags: [Cardápio]
+      summary: Lista as categorias
+      responses:
+        '200':
+          description: Categorias
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/Categoria' }
+
+  /produtos:
+    get:
+      tags: [Cardápio]
+      summary: Lista os produtos disponíveis (com filtros e paginação)
+      parameters:
+        - { name: categoria, in: query, schema: { type: integer }, description: 'ID da categoria' }
+        - { name: busca, in: query, schema: { type: string, maxLength: 100 }, description: 'Texto no nome ou na descrição' }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 }, description: 'Acima de 50 é reduzido para 50 (teto)' }
+      responses:
+        '200':
+          description: Página de produtos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/Produto' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+        '400':
+          description: 'Parâmetro inválido (ex.: categoria=abc, pagina=0)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /produtos/{id}:
+    get:
+      tags: [Cardápio]
+      summary: Detalhe de um produto
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Produto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dados: { $ref: '#/components/schemas/Produto' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+
+  /pedidos:
+    get:
+      tags: [Pedidos]
+      summary: Pedidos do usuário do token (mais recentes primeiro)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        '200':
+          description: Página de pedidos (sem os itens; use GET /pedidos/{id})
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/PedidoResumo' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+    post:
+      tags: [Pedidos]
+      summary: Cria um pedido
+      description: |
+        - Preço e nome vêm **do banco**; qualquer campo `preco` enviado é ignorado.
+        - Produto repetido na lista tem as quantidades somadas.
+        - Frete calculado pelo **microserviço de entrega**; se ele estiver fora do ar,
+          o cálculo local é usado (`entrega.origem = "local"`).
+          Endereço sem latitude/longitude usa distância padrão (`entrega.origem = "sem_coordenadas"`).
+        - `troco_para` só vale para `Dinheiro` e precisa ser >= total.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itens, forma_pagamento]
+              properties:
+                itens:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [produto_id, quantidade]
+                    properties:
+                      produto_id: { type: integer, minimum: 1, example: 2 }
+                      quantidade: { type: integer, minimum: 1, maximum: 50, example: 2 }
+                forma_pagamento:
+                  type: string
+                  enum: [Dinheiro, Cartão Crédito, Cartão Débito, PIX]
+                troco_para: { type: number, nullable: true, example: 150 }
+            example:
+              itens: [{ produto_id: 2, quantidade: 2 }, { produto_id: 11, quantidade: 1 }]
+              forma_pagamento: Dinheiro
+              troco_para: 150
+      responses:
+        '201':
+          description: Pedido criado
+          headers:
+            Location:
+              description: URL do pedido criado
+              schema: { type: string, example: /api/v1/pedidos/7 }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dados:
+                    allOf:
+                      - { $ref: '#/components/schemas/PedidoDetalhe' }
+                      - type: object
+                        properties:
+                          entrega:
+                            type: object
+                            properties:
+                              origem: { type: string, enum: [microservico, local, sem_coordenadas] }
+                              tempo_estimado_min: { type: integer, nullable: true, example: 27 }
+        '400': { $ref: '#/components/responses/JsonInvalido' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '413': { $ref: '#/components/responses/CorpoGrande' }
+        '415': { $ref: '#/components/responses/TipoNaoSuportado' }
+        '422':
+          description: |
+            Validação (itens, quantidade, forma de pagamento, troco), produto
+            inexistente/indisponível (`produto_indisponivel`) ou endereço fora da área (`fora_da_area`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /pedidos/{id}:
+    get:
+      tags: [Pedidos]
+      summary: Detalhe de um pedido do usuário
+      description: Pedido de outra pessoa responde **404** (não 403), para nem confirmar que ele existe.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Pedido com itens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dados: { $ref: '#/components/schemas/PedidoDetalhe' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Erro:
+      type: object
+      properties:
+        erro:
+          type: object
+          properties:
+            codigo: { type: string, example: nao_encontrado }
+            mensagem: { type: string, example: Pedido não encontrado. }
+    Usuario:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        nome: { type: string, example: Cliente Demo }
+        email: { type: string, example: demo@pizzaria.com }
+        tipo_usuario: { type: string, enum: [CLIENTE, ADMIN] }
+    Categoria:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        nome: { type: string, example: Pizzas Salgadas }
+    Produto:
+      type: object
+      properties:
+        id: { type: integer, example: 2 }
+        categoria_id: { type: integer, example: 1 }
+        categoria: { type: string, example: Pizzas Salgadas }
+        nome: { type: string, example: Calabresa }
+        descricao: { type: string }
+        preco: { type: number, example: 44.9 }
+        imagem_url: { type: string, nullable: true }
+    Paginacao:
+      type: object
+      properties:
+        pagina: { type: integer, example: 1 }
+        limite: { type: integer, example: 10 }
+        total: { type: integer, example: 13 }
+        total_paginas: { type: integer, example: 2 }
+    PedidoResumo:
+      type: object
+      properties:
+        id: { type: integer, example: 7 }
+        status: { type: string, enum: [PENDENTE, PREPARANDO, SAIU PARA ENTREGA, ENTREGUE, CANCELADO] }
+        total: { type: number, example: 108.8 }
+        taxa_entrega: { type: number, example: 5.0 }
+        distancia_km: { type: number, example: 2.04 }
+        forma_pagamento: { type: string, example: PIX }
+        troco_para: { type: number, nullable: true }
+        endereco_entrega: { type: string }
+        data_pedido: { type: string, example: '2026-10-18 21:59:16' }
+    PedidoDetalhe:
+      allOf:
+        - { $ref: '#/components/schemas/PedidoResumo' }
+        - type: object
+          properties:
+            itens:
+              type: array
+              items:
+                type: object
+                properties:
+                  produto_id: { type: integer, nullable: true, description: 'null na pizza meia a meia feita pelo site' }
+                  nome: { type: string, example: Calabresa }
+                  quantidade: { type: integer, example: 2 }
+                  preco_unitario: { type: number, example: 44.9 }
+                  subtotal: { type: number, example: 89.8 }
+                  is_personalizada: { type: boolean }
+
+  responses:
+    NaoAutenticado:
+      description: Sem token, token adulterado, com assinatura errada ou expirado
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: Bearer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          examples:
+            semToken: { value: { erro: { codigo: nao_autenticado, mensagem: 'Envie o header "Authorization: Bearer <token>".' } } }
+            expirado: { value: { erro: { codigo: token_expirado, mensagem: Token expirado. Faça login novamente. } } }
+            adulterado: { value: { erro: { codigo: token_invalido, mensagem: Assinatura do token inválida. } } }
+    NaoEncontrado:
+      description: Não encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    JsonInvalido:
+      description: Corpo não é um JSON válido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    Validacao:
+      description: Campos obrigatórios ausentes ou inválidos
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    CorpoGrande:
+      description: Corpo maior que 16 KB
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    TipoNaoSuportado:
+      description: Content-Type diferente de application/json
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
