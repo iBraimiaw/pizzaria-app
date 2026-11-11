@@ -6,6 +6,9 @@ if(isLoggedIn()) {
     exit;
 }
 
+// "Não sou um robô": fora de dev, a página não abre com as chaves de teste do Google
+exigir_recaptcha_configurado();
+
 $erro = '';
 $sucesso = '';
 $modo_recuperar = isset($_GET['recuperar']) ? true : false;
@@ -43,14 +46,21 @@ if(isset($_POST['login'])) {
     $senha = (string) ($_POST['senha'] ?? '');
     $ip = obter_ip_cliente();
 
-    // 1) Força bruta: muitas falhas recentes (e-mail + IP) = bloqueado por um tempo
-    $segundos_bloqueio = verificar_bloqueio($pdo, $email, $ip);
+    // 1) "Não sou um robô" vem antes de tudo. Se falhar, nada mais roda:
+    //    nem bloqueio, nem senha, e não conta como tentativa errada.
+    $erro_robo = verificar_recaptcha($pdo, $email);
 
-    if ($segundos_bloqueio > 0) {
+    // 2) Força bruta: muitas falhas recentes (e-mail + IP) = bloqueado por um tempo
+    //    (só consulta quem passou no "Não sou um robô"; 0 = liberado)
+    $segundos_bloqueio = ($erro_robo === null) ? verificar_bloqueio($pdo, $email, $ip) : 0;
+
+    if ($erro_robo !== null) {
+        $erro = $erro_robo;
+    } elseif ($segundos_bloqueio > 0) {
         registrar_evento_seguranca($pdo, 'bloqueio', null, "Login bloqueado para $email");
         $erro = 'Muitas tentativas erradas. Tente novamente em ' . formatar_tempo_bloqueio($segundos_bloqueio) . '.';
     } else {
-        // 2) Busca só pelo e-mail; a senha é conferida no PHP (hash nunca vai no SQL)
+        // 3) Busca só pelo e-mail; a senha é conferida no PHP (hash nunca vai no SQL)
         $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
         $stmt->execute([$email]);
         $usuario = $stmt->fetch();
@@ -77,7 +87,7 @@ if(isset($_POST['login'])) {
             exit;
         }
 
-        // 3) Falhou: anota a tentativa e avisa (mensagem igual para e-mail ou senha errados)
+        // 4) Falhou: anota a tentativa e avisa (mensagem igual para e-mail ou senha errados)
         registrar_tentativa_falha($pdo, $email, $ip);
         registrar_evento_seguranca($pdo, 'login_falha', $usuario ? (int) $usuario['id'] : null, "E-mail: $email");
 
@@ -273,6 +283,8 @@ if(isset($_POST['login'])) {
                     <a href="esqueceu-senha.php"><i class="fas fa-question-circle"></i> Esqueceu a senha?</a>
                 </div>
                 
+                <?= campo_recaptcha() ?>
+
                 <button type="submit" name="login" class="btn-login">
                     <i class="fas fa-sign-in-alt"></i> Entrar
                 </button>

@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/functions.php';
 
+// "Não sou um robô": fora de dev, a página não abre com as chaves de teste do Google
+exigir_recaptcha_configurado();
+
 $mensagem = '';
 $erro = '';
 $link_demonstracao = ''; // só preenchido em APP_ENV=dev (não há servidor de e-mail no Docker)
@@ -16,10 +19,16 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $ip = obter_ip_cliente();
     $identificador = 'recuperacao:' . $email; // contagem separada da do login
 
+    // "Não sou um robô": é o primeiro teste da lista abaixo.
+    // Se falhar, este pedido não conta no limite de recuperação.
+    $erro_robo = verificar_recaptcha($pdo, $email);
+
     // Rate limit: no máximo RECUPERACAO_MAX_PEDIDOS pedidos a cada 15 min
     $segundos_bloqueio = verificar_bloqueio($pdo, $identificador, $ip, RECUPERACAO_MAX_PEDIDOS, RECUPERACAO_JANELA_MINUTOS);
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if ($erro_robo !== null) {
+        $erro = $erro_robo;
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $erro = 'Informe um e-mail válido.';
     } elseif ($segundos_bloqueio > 0) {
         registrar_evento_seguranca($pdo, 'bloqueio', null, "Recuperação de senha bloqueada para $email");
@@ -206,6 +215,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label><i class="fas fa-envelope"></i> Email:</label>
                 <input type="email" name="email" required placeholder="seuemail@exemplo.com">
             </div>
+            <?= campo_recaptcha() ?>
             <button type="submit" class="btn-enviar">Enviar Link de Recuperação</button>
         </form>
         

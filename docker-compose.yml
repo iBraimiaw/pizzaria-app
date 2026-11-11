@@ -23,6 +23,11 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       ENTREGA_SERVICE_URL: ${ENTREGA_SERVICE_URL:-http://entrega/}
       ENTREGA_SERVICE_KEY: ${ENTREGA_SERVICE_KEY:-chave-dev-entrega}
+      # "Não sou um robô" (Google reCAPTCHA v2): chaves vazias = chaves de teste do Google.
+      # RECAPTCHA_ATIVO=0 desliga a verificação (plano B sem internet).
+      RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY:-}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+      RECAPTCHA_ATIVO: ${RECAPTCHA_ATIVO:-1}
     depends_on:
       db:
         condition: service_healthy   # só sobe depois que o banco estiver pronto
