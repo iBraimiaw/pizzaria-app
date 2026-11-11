@@ -465,18 +465,43 @@ function recaptcha_usa_chave_de_teste(): bool
 }
 
 /**
- * Falha dura: fora de dev, com o "Não sou um robô" ligado e a chave de TESTE,
- * a página não abre (HTTP 500).
+ * Só UMA das duas chaves veio do .env? (a outra caiu na chave de teste)
  *
- * A chave de teste aprova qualquer resposta. Em produção a caixa viraria
- * enfeite e nenhum robô seria barrado. A API e o microserviço fazem o mesmo
- * com os segredos de dev.
+ * Ex.: chave do site de verdade e chave secreta vazia. A caixa aparece sem o
+ * aviso vermelho, mas o servidor pergunta ao Google com a secreta de TESTE,
+ * que aprova qualquer resposta: a proteção sumiria sem ninguém perceber.
+ */
+function recaptcha_chaves_misturadas(): bool
+{
+    return (RECAPTCHA_SITE_KEY === RECAPTCHA_CHAVE_SITE_TESTE)
+        !== (RECAPTCHA_SECRET_KEY === RECAPTCHA_CHAVE_SECRETA_TESTE);
+}
+
+/**
+ * Falha dura (HTTP 500): com o "Não sou um robô" ligado, a página não abre se
+ *   - só uma das duas chaves estiver no .env (em qualquer APP_ENV, até em dev), ou
+ *   - fora de dev, as chaves forem as de TESTE do Google.
+ *
+ * Nos dois casos a caixa viraria enfeite: a chave secreta de teste aprova
+ * qualquer resposta e nenhum robô seria barrado. A API e o microserviço fazem
+ * o mesmo com os segredos de dev.
  * Chamar no topo da página, antes de qualquer saída (HTML).
  */
 function exigir_recaptcha_configurado(): void
 {
-    if (recaptcha_ativo() && APP_ENV !== 'dev' && recaptcha_usa_chave_de_teste()) {
-        error_log('[recaptcha] BLOQUEADO: chave de teste do Google fora de dev (aprova qualquer resposta). Defina RECAPTCHA_SITE_KEY e RECAPTCHA_SECRET_KEY no .env');
+    if (!recaptcha_ativo()) {
+        return;
+    }
+
+    $motivo = '';
+    if (recaptcha_chaves_misturadas()) {
+        $motivo = 'so uma das duas chaves esta no .env (a outra virou a de teste, que aprova qualquer resposta). Preencha RECAPTCHA_SITE_KEY e RECAPTCHA_SECRET_KEY, as duas do mesmo cadastro';
+    } elseif (APP_ENV !== 'dev' && recaptcha_usa_chave_de_teste()) {
+        $motivo = 'chave de teste do Google fora de dev (aprova qualquer resposta). Defina RECAPTCHA_SITE_KEY e RECAPTCHA_SECRET_KEY no .env';
+    }
+
+    if ($motivo !== '') {
+        error_log('[recaptcha] BLOQUEADO: ' . $motivo);
         http_response_code(500);
         exit('Serviço indisponível: configuração de segurança inválida.');
     }

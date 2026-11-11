@@ -173,10 +173,10 @@ sql "INSERT INTO usuarios (nome, email, senha, endereco, latitude, longitude) VA
 st=$(requisicao "$SITE/login.php")
 chave_site=$(sed -nE 's/.*data-sitekey="([^"]*)".*/\1/p' "$CORPO" | head -1)
 if [ "$st" != 200 ]; then
-    # A página nem abriu (fora de dev, a chave de TESTE derruba a página).
-    # Os testes do "Não sou um robô" rodam assim mesmo e mostram a falha.
+    # A página nem abriu: só uma das duas chaves no .env, ou chave de TESTE
+    # fora de dev. Os testes do "Não sou um robô" rodam assim mesmo e mostram a falha.
     MODO_ROBO=erro
-    echo "$(vermelho "INFO    login.php respondeu HTTP $st (esperado 200). Se APP_ENV não for dev, confira as chaves do \"Não sou um robô\" no .env.")"
+    echo "$(vermelho "INFO    login.php respondeu HTTP $st (esperado 200). Confira as chaves do \"Não sou um robô\" no .env: as duas preenchidas e, fora de dev, nada de chaves de teste.")"
 elif ! corpo_tem 'class="g-recaptcha"'; then
     MODO_ROBO=desligado
     echo 'INFO    "Não sou um robô" DESLIGADO (RECAPTCHA_ATIVO=0).'

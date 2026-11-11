@@ -30,7 +30,7 @@ Em cada passo há:
    ```
 
    Abrir o `.env`, **com o projetor desligado**, e preencher `RECAPTCHA_SITE_KEY` e `RECAPTCHA_SECRET_KEY` com as chaves cadastradas em https://www.google.com/recaptcha/admin (reCAPTCHA v2, caixa de seleção "Não sou um robô", domínio `localhost`).
-   - Preencha as **duas**, do mesmo cadastro. Com só a chave do site, a secreta vira a de teste: a caixa aparece sem aviso vermelho, mas o Google aprova qualquer resposta.
+   - Preencha as **duas**, do mesmo cadastro. Com só uma, o login, o cadastro e o esqueci a senha não abrem e mostram "Serviço indisponível: configuração de segurança inválida.".
    - A chave secreta nunca vai para o Git. O `.env` já está no `.gitignore`. Ela também não pode aparecer na tela. Se aparecer, crie chaves novas no painel do reCAPTCHA.
    - Se o `.env` já existe com as chaves, pule o `cp`: ele troca o arquivo pelo modelo e as chaves somem.
    - A sala precisa de internet. O quadradinho vem do Google.
@@ -314,6 +314,7 @@ O que muda com as chaves:
 | O quadradinho "Não sou um robô" não aparece | falta internet (o quadradinho vem do Google). Plano B, sem abrir o `.env` (ele mostraria a chave secreta no projetor): rodar `RECAPTCHA_ATIVO=0 docker compose up -d`. A variável escrita no comando vale mais que a do `.env`. O quadradinho some e o login funciona sem ele. Abrir o `login.php` de novo pela barra de endereço (o web reinicia e esquece as sessões) e pular o 2.3. Para religar: `docker compose up -d` |
 | "Não foi possível confirmar o 'Não sou um robô'. Tente de novo." | o site não conseguiu falar com o Google: internet ou Google fora do ar. Tentar de novo. Se repetir, usar o plano B da linha acima |
 | Aviso vermelho no quadradinho, dizendo que é só para teste | o `.env` com as chaves não foi lido, e o site está com as chaves de teste. Conferir o `.env` na pasta do projeto, rodar `docker compose up -d` e abrir o `login.php` de novo |
+| "Serviço indisponível: configuração de segurança inválida." no login, no cadastro ou no esqueci a senha | falta uma das duas chaves no `.env` (ou, fora de dev, são as chaves de teste). Conferir as duas, fora do projetor, e rodar `docker compose up -d` |
 | O Google pediu para clicar em imagens | normal, ainda mais depois de várias tentativas seguidas. Resolver e seguir |
 | "Confirme que você não é um robô." quando era para entrar | faltou marcar, ou o quadradinho venceu (ele desmarca sozinho depois de uns 2 minutos). Marcar de novo e clicar em Entrar. Se continuar mesmo marcando, a chave secreta do `.env` está errada: no phpMyAdmin, a linha `captcha_invalido` mostra `erros do Google: invalid-input-response`. Conferir as duas chaves no `.env`, fora do projetor, e rodar `docker compose up -d` |
 
