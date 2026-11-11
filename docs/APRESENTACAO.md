@@ -22,25 +22,50 @@ Em cada passo há:
 ## 0. Preparação (10 minutos antes, fora do tempo)
 
 1. Abrir o **Docker Desktop** e esperar ficar verde.
-2. No Git Bash:
+2. **Antes do `up`**, criar o `.env` com as chaves de verdade do "Não sou um robô". No Git Bash:
 
    ```bash
    cd /c/Users/Leeonam/pizzaria-app
+   cp .env.example .env
+   ```
+
+   Abrir o `.env`, **com o projetor desligado**, e preencher `RECAPTCHA_SITE_KEY` e `RECAPTCHA_SECRET_KEY` com as chaves cadastradas em https://www.google.com/recaptcha/admin (reCAPTCHA v2, caixa de seleção "Não sou um robô", domínio `localhost`).
+   - Preencha as **duas**, do mesmo cadastro. Com só a chave do site, a secreta vira a de teste: a caixa aparece sem aviso vermelho, mas o Google aprova qualquer resposta.
+   - A chave secreta nunca vai para o Git. O `.env` já está no `.gitignore`. Ela também não pode aparecer na tela. Se aparecer, crie chaves novas no painel do reCAPTCHA.
+   - Se o `.env` já existe com as chaves, pule o `cp`: ele troca o arquivo pelo modelo e as chaves somem.
+   - A sala precisa de internet. O quadradinho vem do Google.
+
+3. Subir tudo e preparar o banco:
+
+   ```bash
    docker compose up -d --build
    docker compose ps                       # db e entrega precisam estar (healthy)
+   bash scripts/smoke-test.sh              # tem que terminar com "0 FALHOU" e a 1ª linha falar das chaves de verdade
    bash scripts/smoke-test.sh --reset-demo # senha do demo volta para MD5
+   ```
+
+   Conferir a chave secreta (o smoke test não consegue): abrir http://localhost:8080/login.php, marcar o "Não sou um robô" e entrar com `ataque@pizzaria.com` e a senha `errada`.
+   - "Email ou senha incorretos!": certo, o Google aprovou a caixa.
+   - "Confirme que você não é um robô.": a chave secreta do `.env` está errada.
+   - "Não foi possível confirmar...": o container web não fala com o Google.
+
+   Depois, abrir o `login.php` de novo pela barra de endereço. Por último, limpar as tentativas e o log (inclusive os desse teste):
+
+   ```bash
    docker compose exec db mysql -upizzaria -ppizzaria123 pizzaria -e "DELETE FROM tentativas_login; DELETE FROM logs_seguranca"
    ```
 
    Alternativa para zerar tudo do zero: `docker compose down -v && docker compose up -d --build`. Leva cerca de 1 minuto.
 
-3. Deixar abertos:
-   - **Aba 1:** http://localhost:8080/login.php (o site, **sem estar logado**).
+   Se o `.env` mudar com a stack no ar, rode `docker compose up -d`. Ele recria o web com as chaves novas.
+
+4. Deixar abertos:
+   - **Aba 1:** http://localhost:8080/login.php (o site, **sem estar logado**). O quadradinho "Não sou um robô" tem que aparecer **sem aviso vermelho**.
    - **Aba 2:** http://localhost:8082 (phpMyAdmin, servidor `db`, usuário `pizzaria`, senha `pizzaria123`), já na tabela `usuarios` do banco `pizzaria`.
-   - **Uma janela anônima** (Ctrl+Shift+N), na tela de login, para o teste de força bruta.
+   - **Uma janela anônima** (Ctrl+Shift+N), na tela de login, para os passos 2.3 ("Não sou um robô") e 2.4 (força bruta).
    - **Git Bash** com fonte grande, já na pasta do projeto.
    - **VS Code** com o `README.md` aberto, para mostrar o diagrama.
-4. Teste rápido: `curl -s http://localhost:8080/api/v1/health` deve responder `"status":"ok"`.
+5. Teste rápido: `curl -s http://localhost:8080/api/v1/health` deve responder `"status":"ok"`.
 
 > **Cuidado:** não faça login com o demo antes da apresentação. O primeiro login troca o MD5 por bcrypt. Se isso acontecer, rode de novo `bash scripts/smoke-test.sh --reset-demo`.
 
@@ -63,11 +88,11 @@ docker compose ps
 
 ## 2. Segurança (3 min 30 s)
 
-### 2.1 Migração de senha MD5 → bcrypt, ao vivo (1 min)
+### 2.1 Migração de senha MD5 → bcrypt, ao vivo (50 s)
 
 **Faça:**
 1. **Aba 2 (phpMyAdmin)**: tabela `usuarios`, mostrar a coluna `senha` do demo: `e14c05f0dc27e6be...`
-2. **Aba 1 (site)**: entrar com `demo@pizzaria.com` / `Demo@123`.
+2. **Aba 1 (site)**: preencher `demo@pizzaria.com` / `Demo@123`, marcar o **"Não sou um robô"** e clicar em Entrar.
 3. Voltar ao phpMyAdmin e recarregar (F5).
 
 **Fale:**
@@ -75,7 +100,7 @@ docker compose ps
 
 **Mostre:** a senha virou `$2y$10$...`. O código está em `includes/security.php`, função `verificar_senha_e_migrar()`.
 
-### 2.2 CSRF bloqueado com 403 (40 s)
+### 2.2 CSRF bloqueado com 403 (30 s)
 
 **Faça:**
 
@@ -83,23 +108,36 @@ docker compose ps
 curl -s -o /dev/null -w "%{http_code}\n" -X POST -d "email=demo@pizzaria.com&senha=Demo@123&login=1" http://localhost:8080/login.php
 ```
 
-**Mostre:** `403`. Depois, no navegador, F12 → Elements → procurar `csrf_token`: o campo escondido aparece dentro do formulário.
+**Mostre:** `403`. Depois, no navegador, F12 → Elements → procurar `csrf_token`: o campo escondido aparece dentro do formulário. Se o Console mostrar erros 404 de `assets/`, ignore: esses arquivos não vieram no projeto original.
 
 **Fale:**
 > "Todo formulário leva um token aleatório que fica guardado na sessão. Um site malicioso não consegue ler esse token, então não consegue mandar um formulário em nome do usuário. Sem o token, o servidor responde 403 Proibido."
 
-### 2.3 Bloqueio por força bruta (40 s)
+### 2.3 "Não sou um robô" (30 s)
 
-**Faça:** na **janela anônima**, tentar entrar 5 vezes com `ataque@pizzaria.com` e a senha `errada`.
+**Faça:** na **janela anônima**, digitar o e-mail `robo@pizzaria.com` e a senha `errada`. **Sem marcar** o quadradinho, clicar em Entrar. Depois, no phpMyAdmin, abrir a tabela `logs_seguranca`.
+
+> Não marque o quadradinho neste passo. O botão Entrar fica sempre ativo de propósito: quem decide é o servidor.
+
+**Mostre:** a mensagem **"Confirme que você não é um robô."** No phpMyAdmin, a linha `captcha_invalido` com `Página: /login.php · e-mail: robo@pizzaria.com`.
+
+**Fale:**
+> "Antes de olhar a senha, o servidor confere com o Google se uma pessoa marcou o quadradinho. O código que o Google dá ao navegador vale uma vez só e por pouco tempo. Um robô que manda o formulário direto, sem marcar, é barrado antes de chegar na senha."
+
+### 2.4 Bloqueio por força bruta (1 min)
+
+**Faça:** na **janela anônima**, tentar entrar 5 vezes com `ataque@pizzaria.com` e a senha `errada`, **marcando o "Não sou um robô" a cada tentativa**. Depois de cada erro, o quadradinho volta desmarcado e o campo de e-mail volta vazio: digite o e-mail de novo. Se o Google pedir para clicar em imagens, resolva e siga.
 
 > Use outro e-mail, não o do demo. Se você bloquear o demo, ele fica travado por 15 minutos.
+>
+> Sem marcar o quadradinho, aparece "Confirme que você não é um robô." e a tentativa não conta.
 
 **Mostre:** nas 4 primeiras tentativas aparece "Email ou senha incorretos!". Na 5ª aparece **"Muitas tentativas erradas. Tente novamente em 15 minuto(s)."** No phpMyAdmin, a tabela `tentativas_login` tem 5 linhas.
 
 **Fale:**
-> "Cada erro fica registrado com o e-mail e o IP. Com 5 erros em 15 minutos, o login trava por um tempo, até para a senha certa. Isso inviabiliza o robô que fica testando milhares de senhas."
+> "Cada erro fica registrado com o e-mail e o IP. Com 5 erros em 15 minutos, o login trava por um tempo, até para a senha certa. Isso inviabiliza o robô que fica testando milhares de senhas. E, no site, ele ainda teria que passar pelo 'Não sou um robô' a cada tentativa."
 
-### 2.4 Headers de segurança (30 s)
+### 2.5 Headers de segurança (20 s)
 
 **Faça:**
 
@@ -107,16 +145,16 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST -d "email=demo@pizzaria.com&sen
 curl -I http://localhost:8080/index.php
 ```
 
-**Mostre:** `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, o cookie com `HttpOnly; SameSite=Lax` e `Server: Apache` sem versão (e sem `X-Powered-By`).
+**Mostre:** `Content-Security-Policy` (com os endereços do Google em `script-src`, `frame-src` e `connect-src`, por causa do "Não sou um robô"), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, o cookie com `HttpOnly; SameSite=Lax` e `Server: Apache` sem versão (e sem `X-Powered-By`).
 
 **Fale:**
-> "Esses cabeçalhos mandam o navegador se proteger. A CSP limita de onde podem vir os scripts. O X-Frame-Options impede que outro site coloque o nosso dentro de um iframe, o que evita clickjacking. O HttpOnly impede que o JavaScript leia o cookie da sessão. E o servidor não diz a versão do PHP nem a do Apache."
+> "Esses cabeçalhos mandam o navegador se proteger. A CSP limita de onde podem vir os scripts: o nosso site e o Google, por causa do 'Não sou um robô'. O X-Frame-Options impede que outro site coloque o nosso dentro de um iframe, o que evita clickjacking. O HttpOnly impede que o JavaScript leia o cookie da sessão. E o servidor não diz a versão do PHP nem a do Apache."
 
-### 2.5 Log de segurança (30 s)
+### 2.6 Log de segurança (20 s)
 
 **Faça:** no phpMyAdmin, abrir a tabela `logs_seguranca`.
 
-**Mostre:** os eventos `senha_migrada`, `login_ok`, `csrf_invalido`, `login_falha` e `bloqueio`, com IP e horário.
+**Mostre:** os eventos `senha_migrada`, `login_ok`, `csrf_invalido`, `captcha_invalido`, `login_falha` e `bloqueio`, com IP e horário.
 
 **Fale:**
 > "Todo evento importante de segurança fica gravado. Se alguém atacar, temos a trilha para investigar."
@@ -245,10 +283,18 @@ curl -s -w " [%{http_code}]\n" -X POST $E/v1/entrega/calcular -H 'Content-Type: 
 bash scripts/smoke-test.sh
 ```
 
-**Mostre:** cerca de 62 linhas verdes com `OK` e, no fim, `Resultado: 62 OK, 0 FALHOU`. Leva uns 10 segundos.
+**Mostre:** no começo, uma linha `INFO` com o modo do "Não sou um robô" (na apresentação: `"Não sou um robô" ligado, com as chaves de verdade do .env.`). Ela não conta como teste. Depois, 68 linhas verdes com `OK` e, no fim, `Resultado: 68 OK, 0 FALHOU`. Leva alguns segundos.
+
+O que muda com as chaves:
+
+| Modo | Verificações | Diferença |
+|---|---|---|
+| Chaves de verdade (`.env` preenchido, o modo da apresentação) | 68 | O script é um robô e não consegue um código válido do Google, então a força bruta pelo site não é testada. No lugar entra "login com resposta FALSA do 'Não sou um robô' -> recusado". Ele só passa se o próprio Google recusar a resposta falsa. Sem internet no container web, ele falha. |
+| Chaves de teste (`.env` sem as chaves) | 68 | O Google aprova qualquer resposta, então o teste de força bruta pelo site roda. Ele precisa de internet no container web. |
+| Desligado (`RECAPTCHA_ATIVO=0`, o plano B) | 62 | Os 7 testes do "Não sou um robô" são pulados e a força bruta do site é testada sem a caixa. Um `AVISO` amarelo aparece no meio e se repete na última linha. |
 
 **Fale:**
-> "Para não depender de testar tudo na mão, escrevi um script que testa o microserviço, a segurança do site e a API: JWT adulterado, IDOR, força bruta, fraude de preço, CORS... Se alguma mudança quebrar uma proteção, aparece em vermelho."
+> "Para não depender de testar tudo na mão, escrevi um script que testa o microserviço, a segurança do site e a API: JWT adulterado, IDOR, força bruta, fraude de preço, CORS, o 'Não sou um robô'... Se alguma mudança quebrar uma proteção, aparece em vermelho."
 
 **Encerramento:**
 > "Resumindo: o site ficou mais seguro, ganhou uma API para outros sistemas e separou o cálculo de entrega num serviço independente que, se cair, não derruba a loja."
@@ -265,6 +311,11 @@ bash scripts/smoke-test.sh
 | O site não abre | `docker compose up -d` e esperar o db ficar `(healthy)` |
 | A variável `$TOKEN` está vazia | rodar de novo o comando de login do passo 3.1 (o demo pode estar bloqueado, ver a 1ª linha) |
 | "403" ao enviar um formulário no navegador | recarregar a página (F5) para pegar um token CSRF novo |
+| O quadradinho "Não sou um robô" não aparece | falta internet (o quadradinho vem do Google). Plano B, sem abrir o `.env` (ele mostraria a chave secreta no projetor): rodar `RECAPTCHA_ATIVO=0 docker compose up -d`. A variável escrita no comando vale mais que a do `.env`. O quadradinho some e o login funciona sem ele. Abrir o `login.php` de novo pela barra de endereço (o web reinicia e esquece as sessões) e pular o 2.3. Para religar: `docker compose up -d` |
+| "Não foi possível confirmar o 'Não sou um robô'. Tente de novo." | o site não conseguiu falar com o Google: internet ou Google fora do ar. Tentar de novo. Se repetir, usar o plano B da linha acima |
+| Aviso vermelho no quadradinho, dizendo que é só para teste | o `.env` com as chaves não foi lido, e o site está com as chaves de teste. Conferir o `.env` na pasta do projeto, rodar `docker compose up -d` e abrir o `login.php` de novo |
+| O Google pediu para clicar em imagens | normal, ainda mais depois de várias tentativas seguidas. Resolver e seguir |
+| "Confirme que você não é um robô." quando era para entrar | faltou marcar, ou o quadradinho venceu (ele desmarca sozinho depois de uns 2 minutos). Marcar de novo e clicar em Entrar. Se continuar mesmo marcando, a chave secreta do `.env` está errada: no phpMyAdmin, a linha `captcha_invalido` mostra `erros do Google: invalid-input-response`. Conferir as duas chaves no `.env`, fora do projetor, e rodar `docker compose up -d` |
 
 ---
 
@@ -281,6 +332,18 @@ No login, o usuário digita a senha. Se ela bate com o MD5 antigo, nesse momento
 
 **Por que a API não precisa de token CSRF?**
 Porque ela não usa cookie: a identidade vai no header `Authorization`, que o navegador **não** envia sozinho. Sem cookie automático, não existe CSRF.
+
+**Como o servidor sabe que a pessoa marcou o "Não sou um robô"?**
+Quando a pessoa marca, o Google entrega um código ao navegador, e o formulário leva esse código junto. O servidor confere o código com o Google usando a **chave secreta**. O código vale uma vez só e por cerca de 2 minutos.
+
+**Por que o do Google, e não um feito à mão?**
+O Google analisa o comportamento de quem marca a caixa para separar pessoa de robô, e é o padrão de mercado. O custo é depender de internet e mandar dados ao Google.
+
+**E a API, por que não tem o "Não sou um robô"?**
+A API é para programas (app, Postman, outros sistemas), e programa não marca quadradinho. Ela tem o limite de 5 tentativas erradas por e-mail + IP: a partir da 5ª, responde 429. Mas um robô que testa um e-mail diferente a cada tentativa não é barrado pela API. O "Não sou um robô" protege só os formulários do site. O próximo passo seria um limite só por IP na API.
+
+**E a privacidade?**
+O quadradinho mostra os links de Privacidade e Termos do Google. Numa loja de verdade, isso entra na política de privacidade do site.
 
 **Por que JWT?**
 A API é *stateless*: o servidor não guarda sessão. O token carrega quem é o usuário e até quando vale, com uma assinatura que prova que foi o nosso servidor que emitiu. Isso funciona bem para app de celular, para outros sistemas e para vários servidores ao mesmo tempo. A desvantagem é que não dá para "deslogar" um token antes de ele expirar sem criar uma lista de bloqueio. Por isso, a validade é curta (1 h).

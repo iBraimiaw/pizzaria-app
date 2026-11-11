@@ -33,6 +33,18 @@ define('ENTREGA_SERVICE_KEY', env('ENTREGA_SERVICE_KEY', 'chave-dev-entrega'));
 // --- Segredo usado para assinar tokens JWT da API ---
 define('JWT_SECRET', env('JWT_SECRET', 'segredo-dev-troque-em-producao'));
 
+// --- "Não sou um robô" (Google reCAPTCHA v2) no login, cadastro e esqueci a senha ---
+// Onde cadastrar: https://www.google.com/recaptcha/admin (tipo reCAPTCHA v2,
+// caixa de seleção "Não sou um robô", domínio localhost).
+// As chaves de verdade ficam no .env (fora do Git). Sem .env valem as chaves
+// de TESTE públicas do Google: aviso vermelho no quadradinho e o Google aprova
+// qualquer resposta. RECAPTCHA_ATIVO=0 desliga a verificação: plano B sem internet.
+define('RECAPTCHA_CHAVE_SITE_TESTE', '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI');
+define('RECAPTCHA_CHAVE_SECRETA_TESTE', '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe');
+define('RECAPTCHA_SITE_KEY', env('RECAPTCHA_SITE_KEY', RECAPTCHA_CHAVE_SITE_TESTE));
+define('RECAPTCHA_SECRET_KEY', env('RECAPTCHA_SECRET_KEY', RECAPTCHA_CHAVE_SECRETA_TESTE));
+define('RECAPTCHA_ATIVO', env('RECAPTCHA_ATIVO', '1') !== '0');
+
 // --- Dados fixos da pizzaria (Campo Grande - MS) ---
 define('PIZZARIA_NOME', 'Pizzaria do Bairro');
 define('PIZZARIA_ENDERECO', 'Rua 14 de Julho, 1500 - Centro, Campo Grande - MS');

@@ -6,6 +6,9 @@ if(isLoggedIn()) {
     exit;
 }
 
+// "Não sou um robô": fora de dev, a página não abre com as chaves de teste do Google
+exigir_recaptcha_configurado();
+
 $erro = '';
 $sucesso = '';
 
@@ -22,7 +25,14 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $telefone_digitos = preg_replace('/\D/', '', $telefone); // só os números
     $problemas_senha = validar_forca_senha($senha);
 
-    if($nome === '' || mb_strlen($nome) > 100) {
+    // "Não sou um robô": é o primeiro teste da lista abaixo. Se falhar, não
+    // cadastra e o formulário volta com os campos preenchidos.
+    $erro_robo = verificar_recaptcha($pdo, $email);
+
+    if($erro_robo !== null) {
+        $erro = $erro_robo;
+    }
+    elseif($nome === '' || mb_strlen($nome) > 100) {
         $erro = 'Informe seu nome (até 100 caracteres).';
     }
     elseif(!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) {
@@ -262,10 +272,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </button>
             </div>
             
-            <input type="hidden" name="latitude" id="latitude">
-            <input type="hidden" name="longitude" id="longitude">
+            <!-- Se o formulário voltar com erro, as coordenadas já buscadas continuam aqui -->
+            <input type="hidden" name="latitude" id="latitude" value="<?= e($_POST['latitude'] ?? '') ?>">
+            <input type="hidden" name="longitude" id="longitude" value="<?= e($_POST['longitude'] ?? '') ?>">
             <div class="info-coordenadas" id="infoCoordenadas"></div>
             
+            <?= campo_recaptcha() ?>
+
             <button type="submit" class="btn-cadastrar">
                 <i class="fas fa-user-plus"></i> Cadastrar
             </button>

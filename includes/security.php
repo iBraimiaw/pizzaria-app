@@ -11,7 +11,8 @@
  *   4. Token CSRF                -> csrf_token(), campo_csrf(), verificar_csrf()
  *   5. Senhas (bcrypt + migração do MD5) -> validar_forca_senha(), verificar_senha_e_migrar()
  *   6. Força bruta (rate limit)  -> verificar_bloqueio(), registrar_tentativa_falha(), limpar_tentativas()
- *   7. Log de auditoria          -> registrar_evento_seguranca()
+ *   7. "Não sou um robô"         -> exigir_recaptcha_configurado(), campo_recaptcha(), verificar_recaptcha()
+ *   8. Log de auditoria          -> registrar_evento_seguranca()
  *
  * As funções que recebem $pdo também são usadas pela API (não dependem de página).
  */
@@ -40,8 +41,9 @@ const SENHA_TAMANHO_MINIMO      = 8;
  * Sobre o 'unsafe-inline' na CSP: as páginas deste projeto têm <style> e
  * <script> escritos dentro do HTML e atributos como onclick="...". Sem
  * 'unsafe-inline' tudo isso pararia de funcionar. Mesmo assim a CSP ajuda:
- * bloqueia scripts vindos de QUALQUER outro domínio, plugins (<object>),
- * e impede que outro site coloque a pizzaria num <iframe>.
+ * bloqueia scripts vindos de outros domínios (a única exceção é o Google,
+ * para o "Não sou um robô"), plugins (<object>), e impede que outro site
+ * coloque a pizzaria num <iframe>.
  * Próximo passo (melhoria futura): mover os scripts para arquivos .js e
  * tirar o 'unsafe-inline' de script-src.
  */
@@ -57,15 +59,19 @@ function enviar_headers_seguranca(): void
     $csp = implode('; ', [
         "default-src 'self'",
         // scripts: só do próprio site (+ inline, ver comentário acima)
-        "script-src 'self' 'unsafe-inline'",
+        // e do Google, para o "Não sou um robô" (reCAPTCHA)
+        "script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/",
         // estilos: próprio site, inline, Google Fonts e Font Awesome (cdnjs)
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
         // arquivos de fonte usados por esses CSS
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
         // imagens dos produtos vêm do Unsplash/placeholder (qualquer https)
         "img-src 'self' data: https:",
-        // fetch(): o próprio site + busca de coordenadas no cadastro (OpenStreetMap)
-        "connect-src 'self' https://nominatim.openstreetmap.org",
+        // fetch(): o próprio site, a busca de coordenadas no cadastro (OpenStreetMap)
+        // e o Google, porque o script do "Não sou um robô" faz chamadas para /recaptcha/
+        "connect-src 'self' https://nominatim.openstreetmap.org https://www.google.com/recaptcha/",
+        // iframes: só a caixa do "Não sou um robô" (o reCAPTCHA roda num iframe do Google)
+        "frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -415,10 +421,200 @@ function formatar_tempo_bloqueio(int $segundos): string
 }
 
 // ===========================================================================
-// 7. LOG DE SEGURANÇA (tabela logs_seguranca)
+// 7. NÃO SOU UM ROBÔ (Google reCAPTCHA v2)
+//
+// Caixa "Não sou um robô" no login, no cadastro e no "esqueci a senha".
+// Atrapalha robôs que testam milhares de senhas ou criam contas em massa.
+// A caixa no navegador sozinha não prova nada: dá para enviar o formulário
+// sem ela (com curl, por exemplo). Quem decide é o SERVIDOR: ele manda a
+// resposta da caixa para o Google e só continua se o Google aprovar.
+// Chaves e liga/desliga ficam no includes/config.php (RECAPTCHA_*).
+// A API (/api/v1) não usa esta seção.
+// ===========================================================================
+
+const RECAPTCHA_URL_VERIFICACAO = 'https://www.google.com/recaptcha/api/siteverify';
+const RECAPTCHA_URL_SCRIPT      = 'https://www.google.com/recaptcha/api.js?hl=pt-BR'; // hl=pt-BR: caixa em português
+const RECAPTCHA_CAMPO_RESPOSTA  = 'g-recaptcha-response'; // campo que o script do Google cria no <form>
+
+const RECAPTCHA_TIMEOUT_CONEXAO_SEG = 3;    // até 3 s para conectar no Google...
+const RECAPTCHA_TIMEOUT_SEG         = 5;    // ...e até 5 s no total (a página não fica "travada")
+
+// Uma resposta de verdade cabe com folga neste limite. Texto maior é lixo ou
+// ataque: recusamos sem nem chamar o Google.
+const RECAPTCHA_RESPOSTA_TAMANHO_MAXIMO = 4000;
+
+// No log, o e-mail digitado entra limpo e cortado neste tamanho (o mesmo de
+// usuarios.email). Sem isso, um robô gravaria textos gigantes no log a cada
+// envio, e um byte inválido faria o banco recusar a linha do log.
+const RECAPTCHA_LOG_EMAIL_TAMANHO_MAXIMO = 150;
+
+const MENSAGEM_RECAPTCHA_FALTOU      = 'Confirme que você não é um robô.';
+const MENSAGEM_RECAPTCHA_INDISPONIVEL = "Não foi possível confirmar o 'Não sou um robô'. Tente de novo.";
+
+/** O "Não sou um robô" está ligado? (RECAPTCHA_ATIVO=0 no .env desliga) */
+function recaptcha_ativo(): bool
+{
+    return RECAPTCHA_ATIVO;
+}
+
+/** Alguma das duas chaves ainda é a chave de TESTE do Google? */
+function recaptcha_usa_chave_de_teste(): bool
+{
+    return RECAPTCHA_SITE_KEY === RECAPTCHA_CHAVE_SITE_TESTE
+        || RECAPTCHA_SECRET_KEY === RECAPTCHA_CHAVE_SECRETA_TESTE;
+}
+
+/**
+ * Falha dura: fora de dev, com o "Não sou um robô" ligado e a chave de TESTE,
+ * a página não abre (HTTP 500).
+ *
+ * A chave de teste aprova qualquer resposta. Em produção a caixa viraria
+ * enfeite e nenhum robô seria barrado. A API e o microserviço fazem o mesmo
+ * com os segredos de dev.
+ * Chamar no topo da página, antes de qualquer saída (HTML).
+ */
+function exigir_recaptcha_configurado(): void
+{
+    if (recaptcha_ativo() && APP_ENV !== 'dev' && recaptcha_usa_chave_de_teste()) {
+        error_log('[recaptcha] BLOQUEADO: chave de teste do Google fora de dev (aprova qualquer resposta). Defina RECAPTCHA_SITE_KEY e RECAPTCHA_SECRET_KEY no .env');
+        http_response_code(500);
+        exit('Serviço indisponível: configuração de segurança inválida.');
+    }
+}
+
+/**
+ * HTML da caixa "Não sou um robô". Use dentro do <form>, antes do botão:
+ *     <?= campo_recaptcha() ?>
+ * O script do Google desenha a caixa dentro da <div class="g-recaptcha">.
+ * Quando a pessoa marca, ele põe a resposta num campo escondido do formulário
+ * (g-recaptcha-response), que o servidor confere em verificar_recaptcha().
+ * Desligado (RECAPTCHA_ATIVO=0): devolve '' e a página fica sem a caixa.
+ */
+function campo_recaptcha(): string
+{
+    if (!recaptcha_ativo()) {
+        return '';
+    }
+
+    // Estilo inline (a CSP permite): espaço em cima e embaixo, caixa centralizada
+    return '<div style="display: flex; justify-content: center; margin: 20px 0;">'
+         . '<div class="g-recaptcha" data-sitekey="' . e(RECAPTCHA_SITE_KEY) . '"></div>'
+         . '</div>'
+         . '<script src="' . e(RECAPTCHA_URL_SCRIPT) . '" async defer></script>';
+}
+
+/**
+ * Confere, no servidor, o "Não sou um robô" do formulário enviado (POST).
+ *
+ * Retorna null se passou, ou a mensagem para mostrar na tela.
+ * Cada recusa vira um evento no log de segurança:
+ *   captcha_invalido     -> não marcou a caixa, ou o Google recusou a resposta
+ *   captcha_indisponivel -> o Google não respondeu (sem internet, lento, fora do ar)
+ * Falhar aqui NÃO conta como tentativa de senha (não grava em tentativas_login):
+ * a senha nem chegou a ser testada.
+ *
+ * @param PDO    $pdo   conexão com o banco (para o log de segurança)
+ * @param string $email e-mail digitado no formulário, só para o log (pode ser vazio)
+ */
+function verificar_recaptcha(PDO $pdo, string $email = ''): ?string
+{
+    if (!recaptcha_ativo()) {
+        return null;
+    }
+
+    // Detalhes do log: a página e, quando houver, o e-mail
+    $detalhes = 'Página: ' . ($_SERVER['SCRIPT_NAME'] ?? '?');
+    if ($email !== '') {
+        // mb_scrub troca bytes inválidos por "?"; mb_substr corta no tamanho máximo
+        $emailLog = mb_substr(mb_scrub($email, 'UTF-8'), 0, RECAPTCHA_LOG_EMAIL_TAMANHO_MAXIMO, 'UTF-8');
+        $detalhes .= ' · e-mail: ' . $emailLog;
+    }
+
+    // 1) Sem resposta: não marcou a caixa, ou o POST não veio do nosso formulário.
+    //    Resposta que não é texto ou que é grande demais também para aqui.
+    //    Nesses casos nem perguntamos ao Google.
+    $resposta = $_POST[RECAPTCHA_CAMPO_RESPOSTA] ?? null;
+    if (!is_string($resposta) || $resposta === '' || strlen($resposta) > RECAPTCHA_RESPOSTA_TAMANHO_MAXIMO) {
+        registrar_evento_seguranca($pdo, 'captcha_invalido', null, $detalhes);
+        return MENSAGEM_RECAPTCHA_FALTOU;
+    }
+
+    // 2) Pergunta ao Google se a resposta vale
+    $resultado = consultar_google_recaptcha($resposta);
+
+    if ($resultado === null) {
+        // O Google não respondeu direito (o motivo já foi para o error_log)
+        registrar_evento_seguranca($pdo, 'captcha_indisponivel', null, $detalhes);
+        return MENSAGEM_RECAPTCHA_INDISPONIVEL;
+    }
+
+    if (($resultado['success'] ?? false) !== true) {
+        // error-codes: motivos do Google (ex.: timeout-or-duplicate = resposta vencida ou já usada)
+        $codigos = array_filter((array) ($resultado['error-codes'] ?? []), 'is_string');
+        $detalhes .= ' · erros do Google: ' . ($codigos ? implode(', ', $codigos) : 'nenhum');
+        registrar_evento_seguranca($pdo, 'captcha_invalido', null, $detalhes);
+        return MENSAGEM_RECAPTCHA_FALTOU;
+    }
+
+    return null;
+}
+
+/**
+ * Pergunta ao Google se a resposta da caixa é válida: POST na siteverify com a
+ * chave secreta e a resposta. O IP do visitante (remoteip) é opcional e não vai.
+ *
+ * Devolve o JSON do Google como array ('success' e, na recusa, 'error-codes')
+ * ou null quando não deu para saber: falha de rede, demora, HTTP diferente de
+ * 200 ou resposta que não é JSON. O motivo vai para o error_log
+ * ("docker compose logs web").
+ */
+function consultar_google_recaptcha(string $resposta): ?array
+{
+    $curl = curl_init(RECAPTCHA_URL_VERIFICACAO);
+    curl_setopt_array($curl, [
+        CURLOPT_POST           => true,
+        // formato de formulário (secret=...&response=...), como o Google pede
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'secret'   => RECAPTCHA_SECRET_KEY,
+            'response' => $resposta,
+        ]),
+        CURLOPT_RETURNTRANSFER => true,               // devolve a resposta em vez de imprimir
+        CURLOPT_CONNECTTIMEOUT => RECAPTCHA_TIMEOUT_CONEXAO_SEG,
+        CURLOPT_TIMEOUT        => RECAPTCHA_TIMEOUT_SEG,
+        // HTTPS conferido de verdade. Sem isso, alguém no meio da rede poderia
+        // se passar pelo Google e aprovar qualquer robô.
+        CURLOPT_SSL_VERIFYPEER => true,               // certificado assinado por autoridade confiável
+        CURLOPT_SSL_VERIFYHOST => 2,                  // 2 = o certificado tem que ser do próprio www.google.com
+    ]);
+
+    $corpo = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $erroCurl = curl_error($curl);
+    curl_close($curl);
+
+    if ($corpo === false) {
+        error_log("[recaptcha] Google nao respondeu ($erroCurl)");
+        return null;
+    }
+    if ($status !== 200) {
+        error_log("[recaptcha] resposta inesperada do Google: HTTP $status");
+        return null;
+    }
+
+    $dados = json_decode($corpo, true);
+    if (!is_array($dados)) {
+        error_log('[recaptcha] resposta do Google nao e JSON valido');
+        return null;
+    }
+    return $dados;
+}
+
+// ===========================================================================
+// 8. LOG DE SEGURANÇA (tabela logs_seguranca)
 //
 // Eventos usados: login_ok, login_falha, bloqueio, csrf_invalido,
-// senha_migrada, senha_redefinida, recuperacao_solicitada, logout.
+// captcha_invalido, captcha_indisponivel, senha_migrada, senha_redefinida,
+// recuperacao_solicitada, logout.
 // ===========================================================================
 
 /**

@@ -3,7 +3,7 @@
 Site de pizzaria em **PHP 8.2 puro** (sem framework e sem Composer), com MySQL.
 Este projeto mostra a implementação de três módulos:
 
-1. **Segurança**: senhas com bcrypt (e migração automática do MD5 antigo), CSRF, bloqueio por força bruta, sessão segura, headers HTTP, proteção contra XSS e IDOR, e log de auditoria.
+1. **Segurança**: senhas com bcrypt (e migração automática do MD5 antigo), CSRF, bloqueio por força bruta, "Não sou um robô" (Google reCAPTCHA v2) no login, no cadastro e no esqueci a senha, sessão segura, headers HTTP, proteção contra XSS e IDOR, e log de auditoria.
 2. **API REST** (`/api/v1`): login com **JWT** escrito à mão, rotas protegidas, cardápio e pedidos em JSON, com documentação OpenAPI.
 3. **Microserviço de entrega**: um container separado que calcula a distância, o frete e o tempo de entrega. Se ele cair, o site usa um cálculo local (fallback).
 
@@ -52,6 +52,8 @@ docker compose up -d --build
 docker compose ps             # espere db e entrega aparecerem como (healthy)
 ```
 
+> **"Não sou um robô" (Google reCAPTCHA v2):** sem chaves no `.env`, o site usa as chaves de teste do Google. Elas funcionam em dev, mas o quadradinho mostra um aviso vermelho e o Google aprova qualquer resposta. Para valer de verdade, cadastre o site em https://www.google.com/recaptcha/admin (reCAPTCHA v2, caixa de seleção "Não sou um robô", domínio `localhost`) e cole as duas chaves no `.env`, em `RECAPTCHA_SITE_KEY` e `RECAPTCHA_SECRET_KEY`. Com `APP_ENV` diferente de `dev` e a verificação ligada, o login, o cadastro e o esqueci a senha não abrem com as chaves de teste (erro 500). `RECAPTCHA_ATIVO=0` desliga a verificação: é o plano B sem internet. Mudou o `.env` com tudo no ar? Rode `docker compose up -d`, que recria o web.
+
 | Serviço | URL | Para que serve |
 |---|---|---|
 | Site | http://localhost:8080 | a pizzaria |
@@ -66,7 +68,7 @@ Ele começa com a senha em **MD5** de propósito, para mostrar a migração para
 **Comandos úteis:**
 
 ```bash
-bash scripts/smoke-test.sh               # 62 testes automáticos (OK/FALHOU), ~10 s
+bash scripts/smoke-test.sh               # 68 testes automáticos (OK/FALHOU); 62 com o "Não sou um robô" desligado
 bash scripts/smoke-test.sh --fallback    # também derruba o microserviço e mostra o plano B
 bash scripts/smoke-test.sh --reset-demo  # volta a senha do demo para MD5
 docker compose logs -f web entrega       # ver os logs
@@ -123,6 +125,7 @@ Quase tudo está em `includes/security.php`. O `includes/functions.php` carrega 
 | **Mesmo tempo de resposta** | quando o e-mail não existe, roda um `password_verify` de mentira, para ninguém descobrir pelo tempo quem tem conta | `security.php: simular_verificacao_senha()` |
 | **CSRF** | token aleatório na sessão + campo escondido em todo formulário POST; sem o token a resposta é **403** | `security.php: csrf_token()`, `campo_csrf()`, `csrf_valido()`, `verificar_csrf()`; links GET (remover item, logout) levam `?token=` |
 | **Força bruta** | 5 falhas (e-mail + IP) em 15 min bloqueiam o login; na recuperação de senha, o limite é 3 pedidos em 15 min | `security.php: verificar_bloqueio()`, `registrar_tentativa_falha()`, `limpar_tentativas()`; tabela `tentativas_login` |
+| **Não sou um robô (Google reCAPTCHA v2)** | caixa "Não sou um robô" no login, no cadastro e no esqueci a senha; antes de olhar a senha, o servidor confere a resposta com o Google; sem ela, mostra "Confirme que você não é um robô." e não conta como tentativa de senha; a CSP libera o script, o iframe e as chamadas do Google, só no caminho /recaptcha/; fora de dev, as páginas não abrem com as chaves de teste do Google; a API não usa | `security.php: campo_recaptcha()`, `verificar_recaptcha()`, `consultar_google_recaptcha()`, `exigir_recaptcha_configurado()`; `login.php`, `cadastro.php`, `esqueceu-senha.php`; chaves em `config.php` e no `.env` |
 | **Sessão segura** | cookie HttpOnly + SameSite=Lax (Secure quando há HTTPS), strict mode, novo ID a cada login, expira após 30 min parada | `security.php: iniciar_sessao_segura()`, `renovar_sessao_apos_login()`, `encerrar_sessao()`; `logout.php` |
 | **Headers HTTP** | CSP, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy; sem `X-Powered-By` e com `Server: Apache` sem versão | `security.php: enviar_headers_seguranca()`, `Dockerfile` (expose_php, ServerTokens) |
 | **XSS** | todo dado vindo do banco ou do usuário passa por `e()` (htmlspecialchars) antes de ir para o HTML | `security.php: e()`; `meus-pedidos.php` (JS `escaparHtml()`) |
@@ -130,7 +133,7 @@ Quase tudo está em `includes/security.php`. O `includes/functions.php` carrega 
 | **Preço vem do banco** | o servidor ignora preço, total, frete e desconto enviados pelo navegador e recalcula tudo | `carrinho.php`, `finalizar-pedido.php`, `functions.php: calcularDescontoCupom()` |
 | **IDOR** | todo SQL de pedido tem `AND usuario_id = ?`; pedido de outra pessoa dá 404 | `buscar-detalhes-pedido.php`, `pedido-confirmado.php`, `PedidoController.php: buscarPedidoDoUsuario()` |
 | **Recuperação de senha** | token de 32 bytes aleatórios, só o hash sha256 vai para o banco, vale 1 h, uso único, mesma mensagem exista ou não o e-mail | `esqueceu-senha.php`, `redefinir-senha.php` |
-| **Log de auditoria** | grava login_ok, login_falha, bloqueio, csrf_invalido, senha_migrada, senha_redefinida, recuperacao_solicitada e logout | `security.php: registrar_evento_seguranca()`; tabela `logs_seguranca` |
+| **Log de auditoria** | grava login_ok, login_falha, bloqueio, csrf_invalido, captcha_invalido, captcha_indisponivel, senha_migrada, senha_redefinida, recuperacao_solicitada e logout | `security.php: registrar_evento_seguranca()`; tabela `logs_seguranca` |
 | **Erros escondidos** | erros só aparecem na tela com `APP_ENV=dev`; em produção, vão só para o log | `includes/config.php`, `Dockerfile` |
 | **Arquivos internos bloqueados** | `.git`, `.env`, `schema.sql`, `docker-compose.yml` e `includes/` respondem 403 | `.htaccess` da raiz, `api/src/.htaccess`, `services/.htaccess` |
 
@@ -226,7 +229,9 @@ curl -s http://localhost:8080/api/v1/auth/me -H "Authorization: Bearer $TOKEN"
 - **Segredos**: o `JWT_SECRET` e a `ENTREGA_SERVICE_KEY` padrão estão no repositório e só valem em dev. Fora de dev, a API e o microserviço se recusam a responder com esses valores. Gere valores novos com `openssl rand -hex 32` e guarde no `.env`.
 - **CSP com `'unsafe-inline'`**: as páginas têm `<script>` e `onclick` dentro do HTML. O próximo passo seria mover esse código para arquivos `.js` e usar nonce.
 - **JWT sem revogação**: o token vale até expirar (1 h). Para ter um logout real na API, seria preciso uma lista de tokens bloqueados.
-- **Força bruta**: a contagem é por e-mail + IP. Um ataque que testa vários e-mails a partir do mesmo IP não é barrado; dá para acrescentar um limite só por IP.
+- **Força bruta**: a contagem é por e-mail + IP. Um ataque que testa vários e-mails a partir do mesmo IP não é barrado; dá para acrescentar um limite só por IP. No site, o "Não sou um robô" já atrapalha esse ataque; na API, não.
+- **"Não sou um robô"**: depende do Google e da internet. Sem internet, o quadradinho não aparece e o servidor não consegue conferir a resposta, então ninguém entra, se cadastra ou pede nova senha pelo site (o plano B é `RECAPTCHA_ATIVO=0`). E envia dados ao Google: o navegador de quem usa o site fala direto com ele, e o servidor manda a resposta da caixa. Numa loja de verdade, isso entra na política de privacidade.
+- **"Não sou um robô" no celular**: a caixa do Google tem largura fixa (304 px). Em telas estreitas, de uns 360 px, ela passa da borda do cartão do login e do cadastro.
 - **Cadastro**: a mensagem "Email já cadastrado!" revela se um e-mail tem conta.
 - **Fallback**: o cálculo local usa a fórmula antiga e não tem raio máximo.
 - **Assets**: os arquivos `assets/css/*.css` e `assets/js/acessibilidade.js` não existem no repositório (dão 404 no navegador, mas não quebram nada).
