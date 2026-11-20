@@ -141,167 +141,389 @@ $extras = $pdo->query("SELECT id, nome, preco FROM produtos WHERE nome IN ('Coca
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ff4f1f">
     <title>Carrinho - Pizzaria do Bairro</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/acessibilidade.css">
+    <script>
+        // Liga as animações de entrada. Se o site.js não carregar, a classe "js"
+        // sai de novo e nenhum bloco fica invisível esperando a animação.
+        document.documentElement.classList.add('js');
+        window.addEventListener('load', function () {
+            if (!window.__siteJs) { document.documentElement.classList.remove('js'); }
+        });
+    </script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #FFF5F0 0%, #FFE8E0 100%); }
-        .header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); position: fixed; top: 0; width: 100%; z-index: 1000; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; max-width: 1400px; margin: 0 auto; }
-        .logo { font-size: 24px; font-weight: bold; } .logo span { color: #e74c3c; }
-        .nav-links { display: flex; list-style: none; gap: 20px; align-items: center; }
-        .nav-links a { text-decoration: none; color: #333; font-weight: 500; }
-        .user-info { background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 8px 20px; border-radius: 50px; color: white; display: flex; align-items: center; gap: 10px; }
-        .main-content { margin-top: 80px; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .table { width: 100%; background: white; border-radius: 10px; overflow-x: auto; display: block; }
-        .table th, .table td { padding: 15px; text-align: left; border-bottom: 1px solid #ddd; }
-        .resumo-pedido { background: white; padding: 25px; border-radius: 10px; margin-top: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .resumo-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .resumo-total { display: flex; justify-content: space-between; padding: 15px 0; font-size: 20px; font-weight: bold; color: #e74c3c; }
-        .btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; }
-        .btn-primary { background: #e74c3c; color: white; }
-        .btn-success { background: #27ae60; color: white; }
-        .btn-danger { background: #e74c3c; color: white; padding: 5px 10px; font-size: 12px; }
-        .quantidade-input { width: 60px; padding: 5px; text-align: center; }
-        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .alert-info { background: #d1ecf1; color: #0c5460; }
-        .alert-success { background: #d4edda; color: #155724; }
-        .cupom-box { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .cupom-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .desconto { color: #27ae60; font-weight: bold; }
-        .extras-box { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .extras-grid { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
-        .extra-item { background: white; padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .extra-item form { margin: 0; }
-        .extra-preco { font-weight: bold; color: #e74c3c; }
-        @media (max-width: 768px) { .navbar { flex-direction: column; } .extras-grid { flex-direction: column; } }
+        /* Estilos só do carrinho (o resto vem do assets/css/style.css) */
+
+        /* Avisos (cupom, adicional, erro, carrinho vazio): ficam no meio da caixa,
+           em vez de esticar de uma borda à outra */
+        .carrinho-aviso {
+            max-width: 640px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        /* "Ver cardápio" não parte no meio quando a frase quebra de linha no celular */
+        .carrinho-aviso a {
+            white-space: nowrap;
+        }
+
+        /* Duas colunas no computador: itens e adicionais | cupom, resumo e pagamento.
+           A grade em si (.menu-colunas) vem do style.css; aqui só o que muda. */
+        .carrinho-colunas {
+            align-items: start;
+            max-width: 1010px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Sem isso um texto comprido (endereço, nome da pizza) empurraria a coluna para fora */
+        .carrinho-colunas > * {
+            min-width: 0;
+        }
+
+        /* Frase de apoio logo abaixo do título da seção (na referência: o texto embaixo de "WINGS") */
+        .carrinho-descricao {
+            margin: -.75rem 0 1.5rem;
+            text-align: center;     /* a grade das colunas alinha tudo à esquerda; esta frase fica no meio */
+            text-wrap: balance;     /* no celular quebra em duas linhas parelhas */
+        }
+
+        /* Item do carrinho: "Quantidade [campo]" na esquerda e "Remover" na ponta direita */
+        .carrinho-item .menu-item__acoes label {
+            font-size: .8rem;
+            font-weight: 700;
+        }
+
+        .carrinho-item .link-perigo {
+            margin-left: auto;
+            padding: .5rem 0 .5rem .5rem;   /* área de toque maior no celular */
+        }
+
+        /* Cupom: campo e botão na mesma linha */
+        .carrinho-cupom {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+
+        .carrinho-cupom .form-control {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* O botão acompanha a altura do campo ao lado (48px), em vez de ficar mais baixo */
+        .carrinho-cupom .btn {
+            align-self: stretch;
+        }
+
+        /* Cupom já aplicado: faixa creme (.bloco-creme do style.css), só mais baixa */
+        .carrinho-cupom-aplicado {
+            margin: 1rem 0 0;
+            padding: .75rem 1rem;
+            text-wrap: balance;
+        }
+
+        /* "Remover cupom" fica embaixo da faixa, sobre o branco: o vermelho de erro
+           em cima do creme não tem contraste para ler (3,8:1; no branco dá 4,5:1).
+           Numa linha só dele, sempre inteiro, e com a mesma área de toque do
+           "Remover" dos itens */
+        .carrinho-remover-cupom {
+            display: block;
+            width: fit-content;
+            margin: .25rem auto 0;
+            padding: .5rem 0;
+        }
+
+        /* Linha pequena que conta de onde veio o cálculo do frete */
+        .carrinho-nota {
+            margin: .4rem 0 0;
+            font-size: .8rem;
+            text-align: right;
+            opacity: .75;
+        }
+
+        .carrinho-finalizar {
+            margin-top: 1.5rem;
+        }
+
+        /* Abaixo de 1280px o .menu-colunas (style.css) vira uma coluna só:
+           aqui ela fica com largura confortável de leitura */
+        @media (max-width: 1279px) {
+            .carrinho-colunas {
+                max-width: 640px;
+            }
+        }
+
+        /* Computador estreito (769 a 800px): o menu lateral deixa a caixa com
+           largura de celular, e o título no tamanho padrão partia "CARRINHO" no meio */
+        @media (min-width: 769px) and (max-width: 800px) {
+            #carrinho-titulo {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Celular: botões ocupam a linha toda e o cupom empilha (campo em cima, botão embaixo) */
+        @media (max-width: 768px) {
+            .carrinho-atualizar .btn {
+                display: block;
+                width: 100%;
+            }
+
+            .carrinho-cupom {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
-<body>
-    <header class="header">
-        <nav class="navbar">
-            <div class="logo">🍕 Pizzaria do <span>Bairro</span></div>
-            <ul class="nav-links">
-                <li><a href="index.php">Início</a></li>
-                <li><a href="cardapio.php">Cardápio</a></li>
-                <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
-                <li><a href="carrinho.php">Carrinho</a></li>
-                <li class="user-info">👤 <?= e($_SESSION['usuario_nome']) ?> <a href="logout.php?token=<?= e(csrf_token()) ?>" style="color:white;">Sair</a></li>
-            </ul>
-        </nav>
+<body class="fundo-xadrez">
+    <!-- Skip Link para acessibilidade -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+
+    <!-- Anúncio para leitores de tela -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveStatus"></div>
+
+    <!-- Menu: coluna fixa na esquerda (computador) ou barra laranja no topo (celular) -->
+    <header class="site-header" id="siteHeader">
+        <div class="site-header__bar">
+            <a class="site-logo" href="index.php" aria-label="Pizzaria do Bairro - página inicial">
+                <img class="site-logo__pilha" src="assets/img/logo-pilha.svg" alt="Pizzaria do Bairro" width="255" height="325">
+                <img class="site-logo__faixa" src="assets/img/logo-faixa.svg" alt="" aria-hidden="true" width="147" height="50">
+            </a>
+            <button type="button" class="nav-toggle" aria-controls="siteMenu" aria-expanded="false">
+                <span class="sr-only">Abrir ou fechar o menu</span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div class="site-header__panel" id="siteMenu">
+            <div class="site-header__acao">
+                <a href="cardapio.php" class="btn btn-bloco">Peça online</a>
+            </div>
+            <nav class="site-nav" aria-label="Menu principal">
+                <ul class="site-nav__menu">
+                    <li><a href="index.php">Início</a></li>
+                    <li class="site-nav__grupo">
+                        <button type="button" class="site-nav__alternar" aria-expanded="false" aria-controls="subCardapio">
+                            Cardápio <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="site-nav__sub" id="subCardapio">
+                            <ul>
+                                <li><a href="cardapio.php">Todos os sabores</a></li>
+                                <li><a href="pizza-dupla.php">Pizza dois sabores</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <?php if(isLoggedIn()): ?>
+                        <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
+                        <li><a href="carrinho.php" class="is-active" aria-current="page" aria-label="Ver carrinho de compras">Carrinho</a></li>
+                        <?php if(isAdmin()): ?>
+                            <li><a href="admin/" aria-label="Painel administrativo">Admin</a></li>
+                        <?php endif; ?>
+                        <li class="site-nav__usuario">
+                            <!-- "Usuário:" só para o leitor de tela (aria-label num <span> é ignorado) -->
+                            <i class="fas fa-user" aria-hidden="true"></i> <span class="sr-only">Usuário: </span><?= e($_SESSION['usuario_nome']) ?>
+                        </li>
+                        <li><a href="logout.php?token=<?= e(csrf_token()) ?>" aria-label="Sair do sistema">Sair</a></li>
+                    <?php else: ?>
+                        <li><a href="login.php">Entrar</a></li>
+                        <li><a href="cadastro.php">Cadastrar</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+            <div class="site-social">
+                <ul>
+                    <li><a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a></li>
+                </ul>
+            </div>
+            <p class="site-header__rodape">&copy; 2024 Pizzaria do Bairro</p>
+        </div>
     </header>
 
-    <main class="main-content">
-        <div class="container">
-            <h1>🛒 Meu Carrinho</h1>
-            
+    <main class="site-content" id="main-content">
+        <!-- Carrinho vazio: a caixa ganha a placa balançando no canto (caixa--placa), como na home.
+             Sem "revealable" (surgir ao rolar): Atualizar, Remover, Adicionar e Cupom recarregam
+             a página, e a caixa inteira piscaria a cada clique (a pizza-dupla.php evita isso também) -->
+        <section class="caixa<?= empty($_SESSION['carrinho']) ? ' caixa--placa' : '' ?>" aria-labelledby="carrinho-titulo">
+            <h1 id="carrinho-titulo">Meu Carrinho</h1>
+
             <?php if(isset($_SESSION['mensagem_cupom'])): ?>
-                <div class="alert alert-success"><?php echo e($_SESSION['mensagem_cupom']); unset($_SESSION['mensagem_cupom']); ?></div>
+                <!-- A mesma mensagem serve para cupom aceito e recusado: quando o texto é o de
+                     cupom inválido, o aviso usa o estilo de erro (só muda a aparência) -->
+                <div class="alert <?= str_contains($_SESSION['mensagem_cupom'], 'inválido') ? 'alert-danger' : 'alert-success' ?> carrinho-aviso" role="status"><?php echo e($_SESSION['mensagem_cupom']); unset($_SESSION['mensagem_cupom']); ?></div>
             <?php endif; ?>
             <?php if(isset($_SESSION['mensagem_extra'])): ?>
-                <div class="alert alert-success"><?php echo e($_SESSION['mensagem_extra']); unset($_SESSION['mensagem_extra']); ?></div>
+                <div class="alert alert-success carrinho-aviso" role="status"><?php echo e($_SESSION['mensagem_extra']); unset($_SESSION['mensagem_extra']); ?></div>
             <?php endif; ?>
             <?php if(isset($_SESSION['pedido_erro'])): ?>
-                <div class="alert" style="background:#fdecea; color:#c0392b;"><?php echo htmlspecialchars($_SESSION['pedido_erro']); unset($_SESSION['pedido_erro']); ?></div>
+                <div class="alert alert-danger carrinho-aviso" role="alert"><?php echo htmlspecialchars($_SESSION['pedido_erro']); unset($_SESSION['pedido_erro']); ?></div>
             <?php endif; ?>
-            
+
             <?php if(empty($_SESSION['carrinho'])): ?>
-                <div class="alert alert-info">Seu carrinho está vazio! <a href="cardapio.php">Ver cardápio</a></div>
+                <div class="alert alert-info carrinho-aviso">Seu carrinho está vazio! <a href="cardapio.php">Ver cardápio</a></div>
             <?php else: ?>
-                <form method="POST">
-                    <?= campo_csrf() ?>
-                    <table class="table">
-                        <thead><tr><th>Produto</th><th>Quantidade</th><th>Preço Unit.</th><th>Subtotal</th><th>Ações</th></tr></thead>
-                        <tbody>
-                            <?php foreach($_SESSION['carrinho'] as $index => $item): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($item['nome']); ?></td>
-                                <td><input type="number" name="quantidade[<?= (int) $index ?>]" value="<?= (int) $item['quantidade'] ?>" min="0" class="quantidade-input"></td>
-                                <td>R$ <?php echo number_format($item['preco'], 2, ',', '.'); ?></td>
-                                <td>R$ <?php echo number_format($item['preco'] * $item['quantidade'], 2, ',', '.'); ?></td>
-                                <td><a href="?remove=<?= (int) $index ?>&token=<?= e(csrf_token()) ?>" class="btn btn-danger">Remover</a></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <div style="margin-top:20px;"><button type="submit" name="atualizar" class="btn btn-primary">Atualizar Carrinho</button></div>
-                </form>
-                
-                <!-- SEÇÃO DE ADICIONAIS (BEBIDAS + PORÇÃO) -->
-                <div class="extras-box">
-                    <h3><i class="fas fa-plus-circle"></i> Adicionar Bebidas ou Porção</h3>
-                    <div class="extras-grid">
-                        <?php foreach($extras as $extra): ?>
-                        <div class="extra-item">
-                            <span><strong><?php echo htmlspecialchars($extra['nome']); ?></strong></span>
-                            <span class="extra-preco">R$ <?php echo number_format($extra['preco'], 2, ',', '.'); ?></span>
-                            <form method="POST" style="display:inline;">
+                <div class="menu-colunas carrinho-colunas">
+
+                    <!-- COLUNA 1: itens do carrinho e adicionais -->
+                    <div>
+                        <section class="menu-secao" aria-labelledby="itens-titulo">
+                            <div class="titulo-linhas"><h2 id="itens-titulo">Itens</h2></div>
+
+                            <!-- Um formulário só para todas as quantidades (botão "Atualizar Carrinho") -->
+                            <form method="POST">
                                 <?= campo_csrf() ?>
-                                <input type="hidden" name="extra_id" value="<?php echo $extra['id']; ?>">
-                                <button type="submit" name="add_extra" class="btn btn-primary" style="padding: 5px 12px;">Adicionar</button>
+                                <ul class="menu-lista">
+                                    <?php foreach($_SESSION['carrinho'] as $index => $item): ?>
+                                    <?php
+                                    // Só exibição: a pizza meia a meia entra no carrinho com um emoji no começo
+                                    // do nome. O visual novo não usa emoji, então ele some na hora de mostrar
+                                    // (o nome guardado no carrinho continua o mesmo).
+                                    $nome_item = trim(str_replace('🍕', '', $item['nome']));
+                                    // Nome no formato "Título: detalhes" (ex.: "Pizza Meia a Meia: Calabresa + Margherita"):
+                                    // o título fica na linha do preço e os detalhes descem para a linha de baixo,
+                                    // como a descrição do cardápio. Inteiro, o nome ocupava 5 linhas no celular.
+                                    $partes_nome = explode(': ', $nome_item, 2);
+                                    $titulo_item = $partes_nome[0];
+                                    $detalhe_item = $partes_nome[1] ?? '';
+                                    ?>
+                                    <li class="menu-item carrinho-item">
+                                        <div class="menu-item__cabecalho">
+                                            <h3 class="menu-item__nome"><?php echo htmlspecialchars($titulo_item); ?></h3>
+                                            <span class="menu-item__preco"><span class="sr-only">Subtotal: </span>R$ <?php echo number_format($item['preco'] * $item['quantidade'], 2, ',', '.'); ?></span>
+                                        </div>
+                                        <?php if($detalhe_item !== ''): ?>
+                                        <p class="menu-item__descricao"><?php echo htmlspecialchars($detalhe_item); ?></p>
+                                        <?php endif; ?>
+                                        <p class="menu-item__descricao">Preço unitário: R$ <?php echo number_format($item['preco'], 2, ',', '.'); ?></p>
+                                        <div class="menu-item__acoes">
+                                            <!-- O nome do item vai escondido no rótulo: o leitor de tela diz "Quantidade de Calabresa" -->
+                                            <label for="quantidade-<?= (int) $index ?>">Quantidade<span class="sr-only"> de <?= e($nome_item) ?></span></label>
+                                            <input type="number" id="quantidade-<?= (int) $index ?>" name="quantidade[<?= (int) $index ?>]" value="<?= (int) $item['quantidade'] ?>" min="0" class="campo-qtd">
+                                            <a href="?remove=<?= (int) $index ?>&token=<?= e(csrf_token()) ?>" class="link-perigo" aria-label="Remover <?= e($nome_item) ?> do carrinho">Remover</a>
+                                        </div>
+                                    </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                                <div class="carrinho-atualizar">
+                                    <button type="submit" name="atualizar" class="btn btn-contorno">Atualizar Carrinho</button>
+                                </div>
                             </form>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                
-                <!-- CUPOM DE DESCONTO -->
-                <div class="cupom-box">
-                    <form method="POST" style="display:flex; gap:10px; width:100%;">
-                        <?= campo_csrf() ?>
-                        <input type="text" name="codigo_cupom" placeholder="Digite seu cupom" class="cupom-input">
-                        <button type="submit" name="aplicar_cupom" class="btn btn-primary">Aplicar Cupom</button>
-                    </form>
-                    <?php if($cupom_aplicado): ?>
-                        <div>Cupom aplicado: <strong><?= e($cupom_aplicado['codigo']) ?></strong> - Desconto de R$ <?php echo number_format($desconto_cupom, 2, ',', '.'); ?> 
-                        <a href="?remover_cupom=1&token=<?= e(csrf_token()) ?>" style="color:#e74c3c; margin-left:10px;">[Remover]</a></div>
-                    <?php endif; ?>
-                </div>
-                
-                <!-- RESUMO DO PEDIDO -->
-                <div class="resumo-pedido">
-                    <div class="resumo-item"><span>📍 Endereço:</span><span><?php echo htmlspecialchars($usuario['endereco']); ?></span></div>
-                    <div class="resumo-item"><span>📏 Distância:</span><span><?= e($distancia) ?> km</span></div>
-                    <div class="resumo-item"><span>🚚 Taxa de entrega:</span><span>R$ <?php echo number_format($taxa_entrega, 2, ',', '.'); ?></span></div>
-                    <?php /* Linha discreta: mostra de onde veio o cálculo (útil na demonstração) */ ?>
-                    <div style="font-size:12px; color:#888; text-align:right; padding:4px 0;">
-                        <?php if($entrega['origem'] === 'microservico'): ?>
-                            ⏱️ Tempo estimado: ~<?php echo (int) $entrega['tempo_estimado_min']; ?> min · calculado pelo serviço de entrega
-                        <?php elseif($entrega['origem'] === 'sem_coordenadas'): ?>
-                            Endereço sem coordenadas · frete padrão de <?= e(ENTREGA_DISTANCIA_PADRAO_KM) ?> km
-                        <?php else: ?>
-                            Serviço de entrega indisponível · frete calculado localmente
+                        </section>
+
+                        <!-- SEÇÃO DE ADICIONAIS (BEBIDAS + PORÇÃO): cada um tem o seu formulário -->
+                        <?php if(!empty($extras)): ?>
+                        <section class="menu-secao" aria-labelledby="extras-titulo">
+                            <!-- Título curto para caber numa linha (como ITENS, CUPOM e RESUMO);
+                                 o que a seção oferece vai na frase de baixo -->
+                            <div class="titulo-linhas"><h2 id="extras-titulo">Adicionais</h2></div>
+                            <p class="carrinho-descricao">Bebidas ou porção para acompanhar o pedido</p>
+                            <ul class="menu-lista">
+                                <?php foreach($extras as $extra): ?>
+                                <li class="menu-item">
+                                    <div class="menu-item__cabecalho">
+                                        <h3 class="menu-item__nome"><?php echo htmlspecialchars($extra['nome']); ?></h3>
+                                        <span class="menu-item__preco">R$ <?php echo number_format($extra['preco'], 2, ',', '.'); ?></span>
+                                    </div>
+                                    <form method="POST" class="menu-item__acoes">
+                                        <?= campo_csrf() ?>
+                                        <input type="hidden" name="extra_id" value="<?php echo $extra['id']; ?>">
+                                        <button type="submit" name="add_extra" class="btn btn-pequeno" aria-label="Adicionar <?= e($extra['nome']) ?> ao carrinho">Adicionar</button>
+                                    </form>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </section>
                         <?php endif; ?>
                     </div>
-                    <?php if(!$entrega['dentro_area']): ?>
-                    <div style="color:#e74c3c; padding:8px 0;">⚠️ Seu endereço está fora da nossa área de entrega.</div>
-                    <?php endif; ?>
-                    <div class="resumo-item"><span>🍕 Subtotal:</span><span>R$ <?php echo number_format($subtotal, 2, ',', '.'); ?></span></div>
-                    <?php if($desconto_cupom > 0): ?>
-                    <div class="resumo-item"><span>🎫 Desconto cupom:</span><span class="desconto">- R$ <?php echo number_format($desconto_cupom, 2, ',', '.'); ?></span></div>
-                    <?php endif; ?>
-                    <div class="resumo-total"><span><strong>TOTAL:</strong></span><span><strong>R$ <?php echo number_format($total, 2, ',', '.'); ?></strong></span></div>
-                    
-                    <form method="POST" action="finalizar-pedido.php">
-                        <?= campo_csrf() ?>
-                        <div class="form-group"><label>Forma de pagamento:</label><select name="forma_pagamento" required><option value="Dinheiro">Dinheiro</option><option value="Cartão Crédito">Cartão Crédito</option><option value="Cartão Débito">Cartão Débito</option><option value="PIX">PIX</option></select></div>
-                        <div id="trocoGroup" style="display:none;"><label>Troco para:</label><input type="number" step="0.01" name="troco_para"></div>
-                        <input type="hidden" name="distancia" value="<?php echo $distancia; ?>">
-                        <input type="hidden" name="taxa_entrega" value="<?php echo $taxa_entrega; ?>">
-                        <input type="hidden" name="total" value="<?php echo $total; ?>">
-                        <input type="hidden" name="desconto_cupom" value="<?php echo $desconto_cupom; ?>">
-                        <?php if($cupom_aplicado): ?>
-                        <input type="hidden" name="cupom_id" value="<?php echo $cupom_aplicado['id']; ?>">
-                        <?php endif; ?>
-                        <button type="submit" class="btn btn-success" style="width:100%; margin-top:20px;" <?php echo $entrega['dentro_area'] ? '' : 'disabled'; ?>>Finalizar Pedido</button>
-                    </form>
+
+                    <!-- COLUNA 2: cupom, resumo e pagamento -->
+                    <div>
+                        <!-- CUPOM DE DESCONTO -->
+                        <section class="menu-secao" aria-labelledby="cupom-titulo">
+                            <div class="titulo-linhas"><h2 id="cupom-titulo">Cupom</h2></div>
+                            <form method="POST" class="carrinho-cupom">
+                                <?= campo_csrf() ?>
+                                <label for="codigo_cupom" class="sr-only">Código do cupom</label>
+                                <input type="text" id="codigo_cupom" name="codigo_cupom" placeholder="Digite seu cupom" class="form-control" autocomplete="off">
+                                <button type="submit" name="aplicar_cupom" class="btn btn-contorno">Aplicar Cupom</button>
+                            </form>
+                            <?php if($cupom_aplicado): ?>
+                                <!-- &nbsp; = espaço que não quebra: o traço fica colado no código e o "R$" no valor -->
+                                <p class="bloco-creme carrinho-cupom-aplicado">Cupom aplicado: <strong><?= e($cupom_aplicado['codigo']) ?></strong>&nbsp;- Desconto de R$&nbsp;<?php echo number_format($desconto_cupom, 2, ',', '.'); ?></p>
+                                <!-- Fora da faixa creme de propósito (contraste do vermelho; ver o <style>) -->
+                                <a href="?remover_cupom=1&token=<?= e(csrf_token()) ?>" class="link-perigo carrinho-remover-cupom">Remover cupom</a>
+                            <?php endif; ?>
+                        </section>
+
+                        <!-- RESUMO DO PEDIDO -->
+                        <section class="menu-secao carrinho-resumo" aria-labelledby="resumo-titulo">
+                            <div class="titulo-linhas"><h2 id="resumo-titulo">Resumo</h2></div>
+
+                            <div class="linha-dado"><span>Endereço</span><span><?php echo htmlspecialchars($usuario['endereco']); ?></span></div>
+                            <div class="linha-dado"><span>Distância</span><span><?= e($distancia) ?> km</span></div>
+                            <div class="linha-dado"><span>Taxa de entrega</span><span>R$ <?php echo number_format($taxa_entrega, 2, ',', '.'); ?></span></div>
+                            <?php /* Linha discreta: mostra de onde veio o cálculo (útil na demonstração) */ ?>
+                            <p class="carrinho-nota">
+                                <?php if($entrega['origem'] === 'microservico'): ?>
+                                    <i class="far fa-clock" aria-hidden="true"></i> Tempo estimado: ~<?php echo (int) $entrega['tempo_estimado_min']; ?> min · calculado pelo serviço de entrega
+                                <?php elseif($entrega['origem'] === 'sem_coordenadas'): ?>
+                                    Endereço sem coordenadas · frete padrão de <?= e(ENTREGA_DISTANCIA_PADRAO_KM) ?> km
+                                <?php else: ?>
+                                    Serviço de entrega indisponível · frete calculado localmente
+                                <?php endif; ?>
+                            </p>
+                            <?php if(!$entrega['dentro_area']): ?>
+                            <div class="alert alert-danger mt-1" role="alert"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Seu endereço está fora da nossa área de entrega.</div>
+                            <?php endif; ?>
+                            <div class="linha-dado"><span>Subtotal</span><span>R$ <?php echo number_format($subtotal, 2, ',', '.'); ?></span></div>
+                            <?php if($desconto_cupom > 0): ?>
+                            <div class="linha-dado"><span>Desconto cupom</span><span>- R$ <?php echo number_format($desconto_cupom, 2, ',', '.'); ?></span></div>
+                            <?php endif; ?>
+                            <div class="linha-dado linha-dado--total"><span>Total</span><span>R$ <?php echo number_format($total, 2, ',', '.'); ?></span></div>
+
+                            <!-- Fechar o pedido: forma de pagamento (e troco, se for dinheiro) -->
+                            <form method="POST" action="finalizar-pedido.php" class="carrinho-finalizar">
+                                <?= campo_csrf() ?>
+                                <div class="form-group">
+                                    <label for="forma_pagamento">Forma de pagamento</label>
+                                    <select id="forma_pagamento" name="forma_pagamento" required><option value="Dinheiro">Dinheiro</option><option value="Cartão Crédito">Cartão Crédito</option><option value="Cartão Débito">Cartão Débito</option><option value="PIX">PIX</option></select>
+                                </div>
+                                <!-- O JavaScript do fim da página mostra/esconde este campo pelo style.display -->
+                                <div class="form-group" id="trocoGroup" style="display:none;">
+                                    <label for="troco_para">Troco para <em>- opcional</em></label>
+                                    <input type="number" step="0.01" id="troco_para" name="troco_para">
+                                </div>
+                                <input type="hidden" name="distancia" value="<?php echo $distancia; ?>">
+                                <input type="hidden" name="taxa_entrega" value="<?php echo $taxa_entrega; ?>">
+                                <input type="hidden" name="total" value="<?php echo $total; ?>">
+                                <input type="hidden" name="desconto_cupom" value="<?php echo $desconto_cupom; ?>">
+                                <?php if($cupom_aplicado): ?>
+                                <input type="hidden" name="cupom_id" value="<?php echo $cupom_aplicado['id']; ?>">
+                                <?php endif; ?>
+                                <button type="submit" class="btn btn-bloco" <?php echo $entrega['dentro_area'] ? '' : 'disabled'; ?>>Finalizar Pedido</button>
+                            </form>
+                        </section>
+                    </div>
+
                 </div>
             <?php endif; ?>
-        </div>
+        </section>
     </main>
+
+    <script src="assets/js/site.js" defer></script>
+    <script src="assets/js/acessibilidade.js" defer></script>
     <script>
         // Com o carrinho vazio o formulário não existe, então só liga o evento se o select estiver na tela
         const selectPagamento = document.querySelector('select[name="forma_pagamento"]');
