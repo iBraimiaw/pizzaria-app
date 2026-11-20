@@ -49,267 +49,290 @@ $itens = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ff4f1f">
     <title>Pedido Confirmado - Pizzaria do Bairro</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/acessibilidade.css">
+    <script>
+        // Liga as animações de entrada. Se o site.js não carregar, a classe "js"
+        // sai de novo e nenhum bloco fica invisível esperando a animação.
+        document.documentElement.classList.add('js');
+        window.addEventListener('load', function () {
+            if (!window.__siteJs) { document.documentElement.classList.remove('js'); }
+        });
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* Estilos só desta página (o resto vem do assets/css/style.css) */
 
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .card-confirmacao {
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            margin-top: 100px;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
+        @media (min-width: 769px) {
+            /* Na caixa estreita o título no tamanho padrão (3rem) encosta nas bordas.
+               (As margens da caixa e o espaço para a placa vêm do style.css.) */
+            .comprovante h1 {
+                font-size: 2.5rem;
             }
         }
 
-        .card-header {
-            background: linear-gradient(135deg, #27ae60, #229954);
-            color: white;
-            padding: 30px;
+        .comprovante__frase {
+            margin-bottom: 2rem;
+        }
+
+        /* Dados do pedido: uma lista <dl> em que cada par rótulo/valor é uma .linha-dado
+           (o desenho do <dt> e do <dd> vem do style.css, igual ao carrinho e a Meus Pedidos) */
+        .comprovante__dados {
+            margin: 0 0 2.5rem;
+        }
+
+        /* Itens: a primeira e a última coluna encostam nas laterais, na mesma
+           linha vertical dos dados de cima e do total de baixo */
+        .comprovante__itens th:first-child {
+            padding-left: 0;
+        }
+
+        .comprovante__itens th:last-child,
+        .comprovante__itens td:last-child {
+            padding-right: 0;
+        }
+
+        /* Nome do produto com ícone: se o nome quebrar de linha, a segunda linha
+           começa embaixo do texto (e não embaixo do ícone) */
+        .comprovante__itens .item-nome {
+            padding-left: 1.75em;
+            text-indent: -1.75em;
+            overflow-wrap: anywhere;
+        }
+
+        .comprovante__itens .item-nome i {
+            width: 1.25em;
+            margin-right: .25em;
+            text-indent: 0;
             text-align: center;
+            color: var(--laranja);
         }
 
-        .card-header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
+        /* A conta "2 × R$ 44,90" embaixo do nome só aparece no celular (ver abaixo) */
+        .item-conta {
+            display: none;
+            text-indent: 0;
+            font-size: .8rem;
         }
 
-        .check-icon {
-            font-size: 80px;
-            margin-bottom: 20px;
+        .comprovante__total {
+            padding-top: 1rem;
         }
 
-        .card-body {
-            padding: 30px;
+        .comprovante__total > :last-child {
+            white-space: nowrap;
         }
 
-        .pedido-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
+        /* Os dois botões com a mesma largura, lado a lado ou um embaixo do outro */
+        .comprovante .grupo-botoes .btn {
+            min-width: 15.5rem;
         }
 
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
+        /* Computador estreito (769 a 860px): com o menu lateral, sobra para o
+           comprovante quase a largura de um celular. O título diminui para
+           "CONFIRMADO!" não partir no meio da palavra */
+        @media (min-width: 769px) and (max-width: 860px) {
+            .comprovante h1 {
+                font-size: 2rem;
+            }
         }
 
-        .info-row:last-child {
-            border-bottom: none;
-        }
+        /* Celular, e também o computador estreito (769 a 860px) pelo mesmo motivo:
+           com quatro colunas o nome do produto ficava espremido e partia no meio */
+        @media (max-width: 600px), (min-width: 769px) and (max-width: 860px) {
+            .comprovante .titulo-linhas > * {
+                font-size: 1.25rem;
+            }
 
-        .info-label {
-            font-weight: 600;
-            color: #555;
-        }
+            /* Endereço: rótulo em cima e valor embaixo, para não espremer os dois */
+            .comprovante__dados .linha-longa {
+                display: block;
+            }
 
-        .info-value {
-            color: #333;
-        }
+            .comprovante__dados .linha-longa dd {
+                text-align: left;
+            }
 
-        .itens-table {
-            width: 100%;
-            margin: 20px 0;
-            border-collapse: collapse;
-        }
+            /* Quatro colunas não cabem: "Qtd" e "Preço" somem e os dois valores
+               aparecem juntos embaixo do nome do produto (.item-conta).
+               O total também encurta: "Total do Pedido" vira "Total". */
+            .some-no-celular {
+                display: none;
+            }
 
-        .itens-table th,
-        .itens-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
+            .item-conta {
+                display: block;
+            }
 
-        .itens-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-        }
-
-        .total-final {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 20px;
-            font-weight: bold;
-            margin: 20px 0;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: transform 0.3s;
-        }
-
-        .btn-primary {
-            background: #e74c3c;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #3498db;
-            color: white;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            background: #ffc107;
-            color: #000;
-        }
-
-        @media (max-width: 768px) {
-            .btn-group {
-                flex-direction: column;
+            .comprovante .grupo-botoes .btn {
+                width: 100%;
             }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="card-confirmacao">
-            <div class="card-header">
-                <div class="check-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h1>Pedido Confirmado!</h1>
-                <p>Seu pedido foi recebido com sucesso</p>
-            </div>
-            <div class="card-body">
-                <div class="pedido-info">
-                    <div class="info-row">
-                        <span class="info-label">Número do Pedido:</span>
-                        <span class="info-value"><strong>#<?php echo str_pad($pedido['id'], 6, '0', STR_PAD_LEFT); ?></strong></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Data do Pedido:</span>
-                        <span class="info-value"><?php echo date('d/m/Y H:i', strtotime($pedido['data_pedido'])); ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Status:</span>
-                        <span class="info-value">
-                            <span class="status-badge">⏳ PENDENTE</span>
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Cliente:</span>
-                        <span class="info-value"><?= e($pedido['cliente_nome']) ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Endereço de Entrega:</span>
-                        <span class="info-value"><?= e($pedido['endereco_entrega']) ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Forma de Pagamento:</span>
-                        <span class="info-value"><?= e($pedido['forma_pagamento']) ?></span>
-                    </div>
-                    <?php if($pedido['troco_para']): ?>
-                    <div class="info-row">
-                        <span class="info-label">Troco para:</span>
-                        <span class="info-value">R$ <?php echo number_format($pedido['troco_para'], 2, ',', '.'); ?></span>
-                    </div>
-                    <?php endif; ?>
-                </div>
+<body class="fundo-xadrez">
+    <!-- Skip Link para acessibilidade -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
 
-                <h3>Itens do Pedido:</h3>
-                <table class="itens-table">
-                    <thead>
-                        <tr>
-                            <th>Produto</th>
-                            <th>Qtd</th>
-                            <th>Preço</th>
-                            <th>Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach($itens as $item): ?>
-                        <tr>
-                            <td>
-                                <?php 
-                                if(strpos($item['produto_nome'], '+') !== false): 
-                                ?>
-                                    <i class="fas fa-pizza-slice"></i> <?= e($item['produto_nome']) ?>
-                                <?php else: ?>
-                                    <i class="fas fa-utensils"></i> <?= e($item['produto_nome']) ?>
-                                <?php endif; ?>
-                            </td>
-                            <td><?= (int) $item['quantidade'] ?></td>
-                            <td>R$ <?php echo number_format($item['preco_unitario'], 2, ',', '.'); ?></td>
-                            <td>R$ <?php echo number_format($item['quantidade'] * $item['preco_unitario'], 2, ',', '.'); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <!-- Anúncio para leitores de tela -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveStatus"></div>
 
-                <div class="total-final">
-                    <span>Total do Pedido:</span>
-                    <span>R$ <?php echo number_format($pedido['total'], 2, ',', '.'); ?></span>
-                </div>
-
-                <div class="btn-group">
-                    <a href="meus-pedidos.php" class="btn btn-primary">
-                        <i class="fas fa-receipt"></i> Ver Meus Pedidos
-                    </a>
-                    <a href="cardapio.php" class="btn btn-secondary">
-                        <i class="fas fa-pizza-slice"></i> Fazer Novo Pedido
-                    </a>
-                </div>
-            </div>
+    <!-- Menu: coluna fixa na esquerda (computador) ou barra laranja no topo (celular) -->
+    <header class="site-header" id="siteHeader">
+        <div class="site-header__bar">
+            <a class="site-logo" href="index.php" aria-label="Pizzaria do Bairro - página inicial">
+                <img class="site-logo__pilha" src="assets/img/logo-pilha.svg" alt="Pizzaria do Bairro" width="255" height="325">
+                <img class="site-logo__faixa" src="assets/img/logo-faixa.svg" alt="" aria-hidden="true" width="147" height="50">
+            </a>
+            <button type="button" class="nav-toggle" aria-controls="siteMenu" aria-expanded="false">
+                <span class="sr-only">Abrir ou fechar o menu</span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+            </button>
         </div>
-    </div>
+        <div class="site-header__panel" id="siteMenu">
+            <div class="site-header__acao">
+                <a href="cardapio.php" class="btn btn-bloco">Peça online</a>
+            </div>
+            <nav class="site-nav" aria-label="Menu principal">
+                <ul class="site-nav__menu">
+                    <li><a href="index.php">Início</a></li>
+                    <li class="site-nav__grupo">
+                        <button type="button" class="site-nav__alternar" aria-expanded="false" aria-controls="subCardapio">
+                            Cardápio <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="site-nav__sub" id="subCardapio">
+                            <ul>
+                                <li><a href="cardapio.php">Todos os sabores</a></li>
+                                <li><a href="pizza-dupla.php">Pizza dois sabores</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <?php if(isLoggedIn()): ?>
+                        <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
+                        <li><a href="carrinho.php" aria-label="Ver carrinho de compras">Carrinho</a></li>
+                        <?php if(isAdmin()): ?>
+                            <li><a href="admin/" aria-label="Painel administrativo">Admin</a></li>
+                        <?php endif; ?>
+                        <li class="site-nav__usuario">
+                            <!-- "Usuário:" só para o leitor de tela (aria-label num <span> é ignorado) -->
+                            <i class="fas fa-user" aria-hidden="true"></i> <span class="sr-only">Usuário: </span><?= e($_SESSION['usuario_nome']) ?>
+                        </li>
+                        <li><a href="logout.php?token=<?= e(csrf_token()) ?>" aria-label="Sair do sistema">Sair</a></li>
+                    <?php else: ?>
+                        <li><a href="login.php">Entrar</a></li>
+                        <li><a href="cadastro.php">Cadastrar</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+            <div class="site-social">
+                <ul>
+                    <li><a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a></li>
+                </ul>
+            </div>
+            <p class="site-header__rodape">&copy; 2024 Pizzaria do Bairro</p>
+        </div>
+    </header>
 
+    <main class="site-content" id="main-content">
+
+        <!-- Comprovante do pedido: caixa branca estreita sobre o xadrez -->
+        <section class="caixa caixa--estreita caixa--placa comprovante revealable" aria-labelledby="pedido-titulo">
+            <i class="fas fa-check-circle icone-destaque" aria-hidden="true"></i>
+            <h1 id="pedido-titulo">Pedido Confirmado!</h1>
+            <p class="comprovante__frase">Seu pedido foi recebido com sucesso</p>
+
+            <!-- Dados do pedido: rótulo à esquerda, valor à direita.
+                 Rótulos sem dois-pontos, como no carrinho e em Meus Pedidos -->
+            <dl class="comprovante__dados">
+                <div class="linha-dado">
+                    <dt>Número do Pedido</dt>
+                    <dd><strong>#<?php echo str_pad($pedido['id'], 6, '0', STR_PAD_LEFT); ?></strong></dd>
+                </div>
+                <div class="linha-dado">
+                    <dt>Data do Pedido</dt>
+                    <dd><?php echo date('d/m/Y H:i', strtotime($pedido['data_pedido'])); ?></dd>
+                </div>
+                <div class="linha-dado">
+                    <dt>Status</dt>
+                    <dd><span class="status-badge status-badge--warning">Pendente</span></dd>
+                </div>
+                <div class="linha-dado">
+                    <dt>Cliente</dt>
+                    <dd><?= e($pedido['cliente_nome']) ?></dd>
+                </div>
+                <div class="linha-dado linha-longa">
+                    <dt>Endereço de Entrega</dt>
+                    <dd><?= e($pedido['endereco_entrega']) ?></dd>
+                </div>
+                <div class="linha-dado">
+                    <dt>Forma de Pagamento</dt>
+                    <dd><?= e($pedido['forma_pagamento']) ?></dd>
+                </div>
+                <?php if($pedido['troco_para']): ?>
+                <div class="linha-dado">
+                    <dt>Troco para</dt>
+                    <dd>R$ <?php echo number_format($pedido['troco_para'], 2, ',', '.'); ?></dd>
+                </div>
+                <?php endif; ?>
+            </dl>
+
+            <div class="titulo-linhas">
+                <h2 id="itens-titulo">Itens do Pedido</h2>
+            </div>
+
+            <!-- No celular as colunas .some-no-celular somem e a .item-conta aparece (ver o <style>) -->
+            <table class="tabela comprovante__itens" aria-labelledby="itens-titulo">
+                <thead>
+                    <tr>
+                        <th scope="col">Produto</th>
+                        <th scope="col" class="num some-no-celular">Qtd</th>
+                        <th scope="col" class="num some-no-celular">Preço</th>
+                        <th scope="col" class="num">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($itens as $item): ?>
+                    <tr>
+                        <td class="item-nome">
+                            <?php if(strpos($item['produto_nome'], '+') !== false): ?>
+                                <i class="fas fa-pizza-slice" aria-hidden="true"></i> <?= e($item['produto_nome']) ?>
+                            <?php else: ?>
+                                <i class="fas fa-utensils" aria-hidden="true"></i> <?= e($item['produto_nome']) ?>
+                            <?php endif; ?>
+                            <span class="item-conta"><?= (int) $item['quantidade'] ?> &times; R$ <?php echo number_format($item['preco_unitario'], 2, ',', '.'); ?></span>
+                        </td>
+                        <td class="num some-no-celular"><?= (int) $item['quantidade'] ?></td>
+                        <td class="num some-no-celular">R$ <?php echo number_format($item['preco_unitario'], 2, ',', '.'); ?></td>
+                        <td class="num">R$ <?php echo number_format($item['quantidade'] * $item['preco_unitario'], 2, ',', '.'); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <div class="linha-dado linha-dado--total comprovante__total">
+                <span>Total<span class="some-no-celular"> do Pedido</span></span>
+                <span>R$ <?php echo number_format($pedido['total'], 2, ',', '.'); ?></span>
+            </div>
+
+            <div class="grupo-botoes">
+                <a href="meus-pedidos.php" class="btn">Ver Meus Pedidos</a>
+                <a href="cardapio.php" class="btn btn-contorno">Fazer Novo Pedido</a>
+            </div>
+        </section>
+    </main>
+
+    <script src="assets/js/site.js" defer></script>
+    <script src="assets/js/acessibilidade.js" defer></script>
     <script>
         // Mostrar notificação de sucesso (se suportado)
         if (Notification.permission === "granted") {

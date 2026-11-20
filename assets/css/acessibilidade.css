@@ -1,0 +1,95 @@
+/* =====================================================================
+   acessibilidade.css - Ajustes para quem usa teclado, leitor de tela,
+   prefere menos animação ou precisa de mais contraste.
+   Carregue DEPOIS do style.css (ele usa as variáveis de lá).
+   ===================================================================== */
+
+/* Quem navega com Tab precisa VER onde está: contorno escuro (cor --foco do
+   style.css), visível no branco, no creme e na barra laranja do celular.
+   :focus-visible só aparece no teclado (clique com o mouse não mostra). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid var(--foco, #242424);
+    outline-offset: 2px;
+}
+
+/* Sobre fotos escuras o contorno escuro some: usa branco */
+.hero :focus-visible {
+    outline-color: #fff;
+}
+
+/* Elementos clicáveis que não são <a> nem <button> ganham "mãozinha" */
+[role='button'] {
+    cursor: pointer;
+}
+
+/* Área de toque mínima (dedo no celular) */
+@media (pointer: coarse) {
+    .btn,
+    .site-nav a,
+    .site-nav__alternar,
+    .campo-qtd {
+        min-height: 44px;
+    }
+
+    .site-nav a,
+    .site-nav__alternar {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* No <button> o texto já fica no meio da altura mínima; no link com cara
+       de botão (<a class="btn">) ele grudaria em cima, então centralizamos */
+    a.btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    a.btn.btn-bloco {
+        display: flex;
+    }
+}
+
+/* Quem pediu "menos movimento" no sistema: sem carrossel, balanço ou deslize */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .js .revealable,
+    .js .split.revealable .split__cartao-interno {
+        opacity: 1;
+    }
+
+    .js .revealable {
+        transform: none;
+    }
+}
+
+/* Modo de alto contraste do Windows: as bordas continuam aparecendo */
+@media (forced-colors: active) {
+    .btn,
+    .caixa,
+    .site-header,
+    .form-control,
+    .campo-qtd,
+    .alert,
+    .status-badge {
+        border: 2px solid CanvasText;
+    }
+
+    .nav-toggle__linha {
+        background: CanvasText;
+    }
+}

@@ -106,194 +106,188 @@ if(isset($_POST['login'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ff4f1f">
     <title>Login - Pizzaria do Bairro</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/acessibilidade.css">
+    <script>
+        // Liga as animações de entrada. Se o site.js não carregar, a classe "js"
+        // sai de novo e nenhum bloco fica invisível esperando a animação.
+        document.documentElement.classList.add('js');
+        window.addEventListener('load', function () {
+            if (!window.__siteJs) { document.documentElement.classList.remove('js'); }
+        });
+    </script>
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .form-container {
-            max-width: 450px;
-            margin: 100px auto;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .form-container h2 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: #e74c3c;
-        }
-        .btn-login {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-        .btn-login:hover {
-            transform: translateY(-2px);
-        }
-        .btn-enviar {
-            width: 100%;
-            padding: 12px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-enviar:hover {
-            background: #2980b9;
-        }
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-        }
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        .link-cadastro {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .link-cadastro a {
-            color: #e74c3c;
-            text-decoration: none;
-        }
-        .link-cadastro a:hover {
-            text-decoration: underline;
-        }
-        .forgot-password {
+        /* Estilos só desta página (o resto vem do assets/css/style.css) */
+
+        /* "Esqueceu a senha?": link pequeno, à direita, colado no campo de senha
+           (a margem negativa come parte do espaço que o campo deixa embaixo) */
+        .pagina-form__ajuda {
+            margin: -1.25rem 0 1.25rem;
+            font-size: .8rem;
             text-align: right;
-            margin-top: 10px;
         }
-        .forgot-password a {
-            color: #666;
-            font-size: 12px;
-            text-decoration: none;
+
+        /* Um pouco de área em volta do link: mais fácil de acertar com o dedo */
+        .pagina-form__ajuda a {
+            display: inline-block;
+            padding: .25rem 0 .25rem .5rem;
         }
-        .forgot-password a:hover {
-            color: #e74c3c;
-        }
-        .back-to-login {
-            text-align: center;
-            margin-top: 20px;
-        }
+
+        /* A caixa do "Não sou um robô" (.caixa-robo) e o botão largo no celular
+           vêm do style.css: são iguais em todas as páginas de formulário */
     </style>
 </head>
-<body>
-    <div class="form-container">
-        <?php if($modo_recuperar): ?>
-            <!-- Formulário de solicitação de recuperação (informativo) -->
-            <h2><i class="fas fa-key"></i> Recuperar Senha</h2>
-            
-            <?php if($erro): ?>
-                <div class="alert alert-danger"><?= e($erro) ?></div>
-            <?php endif; ?>
-            
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> 
-                <strong>Funcionalidade em desenvolvimento!</strong><br>
-                A recuperação de senha estará disponível apenas quando o sistema for hospedado em um servidor externo (com envio de e-mail configurado).<br>
-                Em breve esta função será implementada.
-            </div>
-            
-            <form method="POST">
-                <?= campo_csrf() ?>
-                <div class="form-group">
-                    <label><i class="fas fa-envelope"></i> E-mail:</label>
-                    <input type="email" name="email" placeholder="seuemail@exemplo.com">
-                </div>
-                <button type="submit" name="recuperar_senha" class="btn-enviar" disabled style="background: #ccc; cursor: not-allowed;">
-                    <i class="fas fa-paper-plane"></i> Enviar Link (Em breve)
-                </button>
-            </form>
-            <div class="back-to-login">
-                <a href="login.php"><i class="fas fa-arrow-left"></i> Voltar para o login</a>
-            </div>
-            
-        <?php else: ?>
-            <!-- Formulário de login normal -->
-            <h2><i class="fas fa-pizza-slice"></i> Login</h2>
-            
-            <?php if($erro): ?>
-                <div class="alert alert-danger"><?= e($erro) ?></div>
-            <?php endif; ?>
-            
-            <form method="POST">
-                <?= campo_csrf() ?>
-                <div class="form-group">
-                    <label><i class="fas fa-envelope"></i> Email:</label>
-                    <input type="email" name="email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Senha:</label>
-                    <input type="password" name="senha" required>
-                </div>
-                
-                <div class="forgot-password">
-                    <a href="esqueceu-senha.php"><i class="fas fa-question-circle"></i> Esqueceu a senha?</a>
-                </div>
-                
-                <?= campo_recaptcha() ?>
+<body class="fundo-creme">
+    <!-- Skip Link para acessibilidade -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
 
-                <button type="submit" name="login" class="btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Entrar
-                </button>
-            </form>
-            
-            <div class="link-cadastro">
-                Não tem conta? <a href="cadastro.php">Cadastre-se aqui</a>
+    <!-- Anúncio para leitores de tela -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveStatus"></div>
+
+    <!-- Menu: coluna fixa na esquerda (computador) ou barra laranja no topo (celular) -->
+    <header class="site-header" id="siteHeader">
+        <div class="site-header__bar">
+            <a class="site-logo" href="index.php" aria-label="Pizzaria do Bairro - página inicial">
+                <img class="site-logo__pilha" src="assets/img/logo-pilha.svg" alt="Pizzaria do Bairro" width="255" height="325">
+                <img class="site-logo__faixa" src="assets/img/logo-faixa.svg" alt="" aria-hidden="true" width="147" height="50">
+            </a>
+            <button type="button" class="nav-toggle" aria-controls="siteMenu" aria-expanded="false">
+                <span class="sr-only">Abrir ou fechar o menu</span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div class="site-header__panel" id="siteMenu">
+            <div class="site-header__acao">
+                <a href="cardapio.php" class="btn btn-bloco">Peça online</a>
             </div>
-        <?php endif; ?>
-    </div>
+            <nav class="site-nav" aria-label="Menu principal">
+                <ul class="site-nav__menu">
+                    <li><a href="index.php">Início</a></li>
+                    <li class="site-nav__grupo">
+                        <button type="button" class="site-nav__alternar" aria-expanded="false" aria-controls="subCardapio">
+                            Cardápio <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="site-nav__sub" id="subCardapio">
+                            <ul>
+                                <li><a href="cardapio.php">Todos os sabores</a></li>
+                                <li><a href="pizza-dupla.php">Pizza dois sabores</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <?php if(isLoggedIn()): ?>
+                        <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
+                        <li><a href="carrinho.php" aria-label="Ver carrinho de compras">Carrinho</a></li>
+                        <?php if(isAdmin()): ?>
+                            <li><a href="admin/" aria-label="Painel administrativo">Admin</a></li>
+                        <?php endif; ?>
+                        <li class="site-nav__usuario">
+                            <!-- "Usuário:" só para o leitor de tela (aria-label num <span> é ignorado) -->
+                            <i class="fas fa-user" aria-hidden="true"></i> <span class="sr-only">Usuário: </span><?= e($_SESSION['usuario_nome']) ?>
+                        </li>
+                        <li><a href="logout.php?token=<?= e(csrf_token()) ?>" aria-label="Sair do sistema">Sair</a></li>
+                    <?php else: ?>
+                        <li><a href="login.php" class="is-active" aria-current="page">Entrar</a></li>
+                        <li><a href="cadastro.php">Cadastrar</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+            <div class="site-social">
+                <ul>
+                    <li><a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a></li>
+                </ul>
+            </div>
+            <p class="site-header__rodape">&copy; 2024 Pizzaria do Bairro</p>
+        </div>
+    </header>
+
+    <main class="site-content" id="main-content">
+        <!-- Enfeite: placa balançando no canto (só aparece em telas largas) -->
+        <div class="enfeite-placa" aria-hidden="true"></div>
+
+        <section class="container-sm pagina-form revealable" aria-labelledby="titulo-pagina">
+            <?php if($modo_recuperar): ?>
+                <!-- Formulário de solicitação de recuperação (informativo) -->
+                <h1 id="titulo-pagina">Recuperar Senha</h1>
+
+                <?php if($erro): ?>
+                    <div class="alert alert-danger" role="alert"><?= e($erro) ?></div>
+                <?php endif; ?>
+
+                <div class="alert alert-info">
+                    <strong>Funcionalidade em desenvolvimento!</strong><br>
+                    A recuperação de senha estará disponível apenas quando o sistema for hospedado em um servidor externo (com envio de e-mail configurado).<br>
+                    Em breve esta função será implementada.
+                </div>
+
+                <!-- form-ui: campos e botão alinhados à esquerda (só o título fica no centro) -->
+                <form method="POST" class="form-ui">
+                    <?= campo_csrf() ?>
+                    <div class="form-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" name="email" id="email" placeholder="seuemail@exemplo.com" autocomplete="email">
+                    </div>
+                    <div class="form-acoes">
+                        <button type="submit" name="recuperar_senha" class="btn" disabled>Enviar Link (Em breve)</button>
+                    </div>
+                </form>
+
+                <p class="pagina-form__links">
+                    <a href="login.php">Voltar para o login</a>
+                </p>
+
+            <?php else: ?>
+                <!-- Formulário de login normal -->
+                <h1 id="titulo-pagina">Login</h1>
+
+                <?php if($erro): ?>
+                    <div class="alert alert-danger" role="alert"><?= e($erro) ?></div>
+                <?php endif; ?>
+
+                <!-- form-ui: campos, caixa do robô e botão alinhados à esquerda -->
+                <form method="POST" class="form-ui">
+                    <?= campo_csrf() ?>
+                    <div class="form-group">
+                        <label for="email">E-mail <em>- obrigatório</em></label>
+                        <input type="email" name="email" id="email" required placeholder="seuemail@exemplo.com" autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="senha">Senha <em>- obrigatório</em></label>
+                        <input type="password" name="senha" id="senha" required autocomplete="current-password">
+                    </div>
+
+                    <p class="pagina-form__ajuda">
+                        <a href="esqueceu-senha.php">Esqueceu a senha?</a>
+                    </p>
+
+                    <div class="caixa-robo">
+                        <?= campo_recaptcha() ?>
+                    </div>
+
+                    <div class="form-acoes">
+                        <button type="submit" name="login" class="btn">Entrar</button>
+                    </div>
+                </form>
+
+                <p class="pagina-form__links">
+                    Não tem conta? <a href="cadastro.php">Cadastre-se aqui</a>
+                </p>
+            <?php endif; ?>
+        </section>
+    </main>
+
+    <script src="assets/js/site.js" defer></script>
+    <script src="assets/js/acessibilidade.js" defer></script>
 </body>
 </html>

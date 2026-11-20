@@ -96,130 +96,153 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ff4f1f">
     <title>Esqueceu a Senha - Pizzaria do Bairro</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/acessibilidade.css">
+    <script>
+        // Liga as animações de entrada. Se o site.js não carregar, a classe "js"
+        // sai de novo e nenhum bloco fica invisível esperando a animação.
+        document.documentElement.classList.add('js');
+        window.addEventListener('load', function () {
+            if (!window.__siteJs) { document.documentElement.classList.remove('js'); }
+        });
+    </script>
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            max-width: 500px;
-            width: 90%;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            text-align: center;
-        }
-        h1 {
-            color: #e74c3c;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: #e74c3c;
-        }
-        .btn-enviar {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-        .btn-enviar:hover {
-            transform: translateY(-2px);
-        }
-        .alert {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .back-link {
-            margin-top: 20px;
-            display: inline-block;
-            color: #e74c3c;
-            text-decoration: none;
-        }
-        .back-link:hover {
-            text-decoration: underline;
+        /* Estilos só desta página (o resto vem do assets/css/style.css; a caixa do
+           "Não sou um robô" e o botão largo no celular também vêm de lá) */
+
+        /* Celular estreito: o texto do botão desta página é comprido. Com a letra
+           um pouco menor ele cabe numa linha só e o botão continua uma pílula. */
+        @media (max-width: 380px) {
+            .pagina-form .form-acoes .btn {
+                padding-left: 1rem;
+                padding-right: 1rem;
+                font-size: .8rem;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1><i class="fas fa-key"></i> Esqueceu a Senha?</h1>
-        <p class="subtitle">Digite seu email para receber o link de recuperação</p>
-        
-        <?php if($mensagem): ?>
-            <div class="alert alert-success"><?= e($mensagem) ?></div>
-        <?php endif; ?>
+<body class="fundo-creme">
+    <!-- Skip Link para acessibilidade -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
 
-        <?php if($link_demonstracao): ?>
-            <!-- Só aparece em APP_ENV=dev: simula o e-mail que o cliente receberia -->
-            <div class="alert alert-success">
-                <strong>Modo demonstração (sem servidor de e-mail):</strong>
-                <a href="<?= e($link_demonstracao) ?>">clique aqui para redefinir a senha</a>
+    <!-- Anúncio para leitores de tela -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveStatus"></div>
+
+    <!-- Menu: coluna fixa na esquerda (computador) ou barra laranja no topo (celular) -->
+    <header class="site-header" id="siteHeader">
+        <div class="site-header__bar">
+            <a class="site-logo" href="index.php" aria-label="Pizzaria do Bairro - página inicial">
+                <img class="site-logo__pilha" src="assets/img/logo-pilha.svg" alt="Pizzaria do Bairro" width="255" height="325">
+                <img class="site-logo__faixa" src="assets/img/logo-faixa.svg" alt="" aria-hidden="true" width="147" height="50">
+            </a>
+            <button type="button" class="nav-toggle" aria-controls="siteMenu" aria-expanded="false">
+                <span class="sr-only">Abrir ou fechar o menu</span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div class="site-header__panel" id="siteMenu">
+            <div class="site-header__acao">
+                <a href="cardapio.php" class="btn btn-bloco">Peça online</a>
             </div>
-        <?php endif; ?>
-
-        <?php if($erro): ?>
-            <div class="alert alert-danger"><?= e($erro) ?></div>
-        <?php endif; ?>
-
-        <form method="POST">
-            <?= campo_csrf() ?>
-            <div class="form-group">
-                <label><i class="fas fa-envelope"></i> Email:</label>
-                <input type="email" name="email" required placeholder="seuemail@exemplo.com">
+            <nav class="site-nav" aria-label="Menu principal">
+                <ul class="site-nav__menu">
+                    <li><a href="index.php">Início</a></li>
+                    <li class="site-nav__grupo">
+                        <button type="button" class="site-nav__alternar" aria-expanded="false" aria-controls="subCardapio">
+                            Cardápio <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="site-nav__sub" id="subCardapio">
+                            <ul>
+                                <li><a href="cardapio.php">Todos os sabores</a></li>
+                                <li><a href="pizza-dupla.php">Pizza dois sabores</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <?php if(isLoggedIn()): ?>
+                        <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
+                        <li><a href="carrinho.php" aria-label="Ver carrinho de compras">Carrinho</a></li>
+                        <?php if(isAdmin()): ?>
+                            <li><a href="admin/" aria-label="Painel administrativo">Admin</a></li>
+                        <?php endif; ?>
+                        <li class="site-nav__usuario">
+                            <!-- "Usuário:" só para o leitor de tela (aria-label num <span> é ignorado) -->
+                            <i class="fas fa-user" aria-hidden="true"></i> <span class="sr-only">Usuário: </span><?= e($_SESSION['usuario_nome']) ?>
+                        </li>
+                        <li><a href="logout.php?token=<?= e(csrf_token()) ?>" aria-label="Sair do sistema">Sair</a></li>
+                    <?php else: ?>
+                        <li><a href="login.php">Entrar</a></li>
+                        <li><a href="cadastro.php">Cadastrar</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+            <div class="site-social">
+                <ul>
+                    <li><a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a></li>
+                </ul>
             </div>
-            <?= campo_recaptcha() ?>
-            <button type="submit" class="btn-enviar">Enviar Link de Recuperação</button>
-        </form>
-        
-        <a href="login.php" class="back-link"><i class="fas fa-arrow-left"></i> Voltar para o login</a>
-    </div>
+            <p class="site-header__rodape">&copy; 2024 Pizzaria do Bairro</p>
+        </div>
+    </header>
+
+    <main class="site-content" id="main-content">
+        <!-- Enfeite: placa balançando no canto (só aparece em telas largas) -->
+        <div class="enfeite-placa" aria-hidden="true"></div>
+
+        <section class="container-sm pagina-form revealable" aria-labelledby="titulo-pagina">
+            <h1 id="titulo-pagina">Esqueceu a Senha?</h1>
+            <p>Digite seu email para receber o link de recuperação</p>
+
+            <?php if($mensagem): ?>
+                <div class="alert alert-success" role="status"><?= e($mensagem) ?></div>
+            <?php endif; ?>
+
+            <?php if($link_demonstracao): ?>
+                <!-- Só aparece em APP_ENV=dev: simula o e-mail que o cliente receberia -->
+                <div class="alert alert-info">
+                    <strong>Modo demonstração (sem servidor de e-mail):</strong>
+                    <a href="<?= e($link_demonstracao) ?>">clique aqui para redefinir a senha</a>
+                </div>
+            <?php endif; ?>
+
+            <?php if($erro): ?>
+                <div class="alert alert-danger" role="alert"><?= e($erro) ?></div>
+            <?php endif; ?>
+
+            <!-- form-ui: campo, caixa do robô e botão alinhados à esquerda (só o título fica no centro) -->
+            <form method="POST" class="form-ui">
+                <?= campo_csrf() ?>
+                <div class="form-group">
+                    <label for="email">E-mail <em>- obrigatório</em></label>
+                    <input type="email" name="email" id="email" required placeholder="seuemail@exemplo.com" autocomplete="email">
+                </div>
+
+                <div class="caixa-robo">
+                    <?= campo_recaptcha() ?>
+                </div>
+
+                <div class="form-acoes">
+                    <button type="submit" class="btn">Enviar Link de Recuperação</button>
+                </div>
+            </form>
+
+            <p class="pagina-form__links">
+                <a href="login.php">Voltar para o login</a>
+            </p>
+        </section>
+    </main>
+
+    <script src="assets/js/site.js" defer></script>
+    <script src="assets/js/acessibilidade.js" defer></script>
 </body>
 </html>

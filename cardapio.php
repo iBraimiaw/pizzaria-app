@@ -25,412 +25,366 @@ $categorias = $pdo->query("SELECT * FROM categorias")->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cardapio - Pizzaria do Bairro</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#ff4f1f">
+    <title>Cardápio - Pizzaria do Bairro</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/acessibilidade.css">
+    <script>
+        // Liga as animações de entrada. Se o site.js não carregar, a classe "js"
+        // sai de novo e nenhum bloco fica invisível esperando a animação.
+        document.documentElement.classList.add('js');
+        window.addEventListener('load', function () {
+            if (!window.__siteJs) { document.documentElement.classList.remove('js'); }
+        });
+    </script>
     <style>
-        * {
+        /* Estilos só do cardápio (o resto vem do assets/css/style.css) */
+
+        /* ---------- Caixa de cima: título, promoção e filtros ---------- */
+
+        /* O conteúdo fica numa coluna central, como o topo da página de referência */
+        .cardapio-topo > * {
+            max-width: 760px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Promoção: o "PROMOÇÃO ESPECIAL!" vira um rótulo em cima do texto */
+        .cardapio-promo {
+            margin-bottom: 2.5rem;
+        }
+
+        .cardapio-promo strong {
+            display: block;
+            margin-bottom: .25rem;
+            font-size: 1.25rem;
+            font-stretch: var(--largura-subtitulo);
+            text-transform: uppercase;
+        }
+
+        /* (o botão comprido quebra em duas linhas parelhas em telas estreitas: regra do style.css) */
+        .cardapio-promo .btn {
+            margin: .25rem 0 .75rem;
+        }
+
+        /* Texto pequeno embaixo do botão, com o espaçamento de linha da letra menor */
+        .cardapio-promo small {
+            display: block;
+        }
+
+        /* Filtros: pílulas lado a lado, quebrando linha quando não cabem */
+        .cardapio-filtros ul {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: .6rem;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #FFF5F0 0%, #FFE8E0 100%);
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000;
-        }
-
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 5%;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .logo span {
-            color: #e74c3c;
-        }
-
-        .nav-links {
-            display: flex;
             list-style: none;
-            gap: 20px;
-            align-items: center;
         }
 
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            transition: color 0.3s;
-            font-weight: 500;
+        /* Categoria escolhida = pílula preenchida (a classe "active" vem do PHP) */
+        .cardapio-filtros .btn.active {
+            color: var(--branco);
+            background-color: var(--carvao);
         }
 
-        .nav-links a:hover {
-            color: #e74c3c;
+        /* ---------- Caixa de baixo: o cardápio ---------- */
+
+        /* Duas colunas que "escorrem" como num jornal: a seção comprida continua
+           na outra coluna e cada item fica inteiro (nunca partido ao meio) */
+        .cardapio-colunas {
+            column-count: 2;
+            column-gap: 60px;
+            text-align: left;
         }
 
-        .user-info {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            padding: 8px 20px;
-            border-radius: 50px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: white;
-        }
-
-        .user-info span {
-            font-weight: 600;
-        }
-
-        .logout-btn {
-            color: white !important;
-            background: rgba(255,255,255,0.2);
-            padding: 5px 10px !important;
-            border-radius: 20px;
-        }
-
-        .btn-carrinho {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white !important;
-            padding: 10px 20px !important;
-            border-radius: 25px !important;
-        }
-
-        .main-content {
-            margin-top: 80px;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
+        /* Uma coluna só, no centro, quando há uma categoria na tela (filtro ativo)
+           ou quando a tela não tem largura para duas colunas confortáveis */
+        .cardapio-colunas:has(> .menu-secao:only-child) {
+            column-count: 1;
+            max-width: 700px;
             margin: 0 auto;
-            padding: 20px;
         }
 
-        .btn-duplo-sabor {
-            display: block;
-            background: linear-gradient(135deg, #f39c12, #e67e22);
-            color: white;
-            text-align: center;
-            padding: 15px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 30px;
-            transition: all 0.3s;
-            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+        @media (max-width: 1300px) {
+            .cardapio-colunas {
+                column-count: 1;
+                max-width: 700px;
+                margin: 0 auto;
+            }
         }
 
-        .btn-duplo-sabor:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
+        /* O título nunca fica sozinho no pé da coluna, longe dos seus itens */
+        .cardapio-colunas .titulo-linhas {
+            break-after: avoid;
         }
 
-        .btn-duplo-sabor i {
-            margin-right: 10px;
-            font-size: 24px;
+        /* Título da categoria um pouco menor que o padrão (2rem), para
+           "Pizzas Salgadas" caber numa linha só nas colunas mais estreitas */
+        .cardapio-colunas .titulo-linhas > * {
+            font-size: 1.75rem;
         }
 
-        .btn-duplo-sabor small {
-            font-size: 12px;
-            display: block;
-            margin-top: 5px;
-            opacity: 0.9;
-        }
-
-        .produtos-grid {
+        /* Item: NOME .... PREÇO na linha inteira (como na referência) e, embaixo,
+           a foto pequena ao lado da descrição e dos botões */
+        .cardapio-item {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-            margin-top: 30px;
+            grid-template-columns: 72px minmax(0, 1fr);
+            grid-template-areas:
+                "cabecalho cabecalho"
+                "foto      descricao"
+                "foto      acoes";
+            column-gap: 1.1rem;
+            align-items: start;
+            margin-bottom: 2rem;
+            break-inside: avoid;
         }
 
-        .produto-card {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
+        .cardapio-item .menu-item__cabecalho {
+            grid-area: cabecalho;
+            margin-bottom: .6rem;
         }
 
-        .produto-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        .cardapio-item .menu-item__descricao {
+            grid-area: descricao;
         }
 
-        .imagem-container {
-            position: relative;
-            overflow: hidden;
-            height: 200px;
+        .cardapio-item .menu-item__acoes {
+            grid-area: acoes;
         }
 
-        .produto-imagem {
-            width: 100%;
-            height: 100%;
+        /* Miniatura estilo "polaroid": moldura branca, sombra e leve inclinação */
+        .cardapio-item__foto {
+            grid-area: foto;
+            width: 72px;
+            height: 72px;
+            padding: 4px;
             object-fit: cover;
-            transition: transform 0.3s;
+            background: var(--branco);
+            box-shadow: var(--sombra);
+            transform: rotate(-3deg);
+            transition: var(--transicao);
         }
 
-        .produto-card:hover .produto-imagem {
-            transform: scale(1.1);
+        .cardapio-item:nth-child(even) .cardapio-item__foto {
+            transform: rotate(3deg);
         }
 
-        .badge-categoria {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(231, 76, 60, 0.9);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 1;
+        .cardapio-item:hover .cardapio-item__foto {
+            transform: rotate(0deg) scale(1.05);
         }
 
-        .produto-info {
-            padding: 15px;
+        /* Campo de quantidade na altura do botão "Adicionar": os dois esticam até a
+           altura do mais alto da linha (no computador, a do botão pequeno; no celular,
+           os 44px de toque do acessibilidade.css), em vez de uma altura fixa no campo */
+        .cardapio-item .menu-item__acoes {
+            align-items: stretch;
         }
 
-        .produto-nome {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #333;
+        .cardapio-item .campo-qtd {
+            width: 4.5rem;
+            height: auto;
+            padding: .2rem .5rem;
         }
 
-        .produto-descricao {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 10px;
-            line-height: 1.4;
-        }
-
-        .produto-preco {
-            font-size: 22px;
-            font-weight: bold;
-            color: #e74c3c;
-            margin-bottom: 15px;
-        }
-
-        .btn-adicionar {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 14px;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-
-        .btn-adicionar:hover {
-            background: #c0392b;
-        }
-
-        .quantidade-input {
-            width: 60px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            text-align: center;
-        }
-
-        .form-carrinho {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .filtros {
-            text-align: center;
-            margin: 30px 0;
-        }
-
-        .btn-filtro {
-            display: inline-block;
-            padding: 10px 20px;
-            margin: 0 5px;
-            background: #f0f0f0;
-            color: #333;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-
-        .btn-filtro.active {
-            background: #e74c3c;
-            color: white;
-        }
-
-        .btn-filtro:hover {
-            background: #c0392b;
-            color: white;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .subtitulo {
-            text-align: center;
-            color: #666;
-            margin-bottom: 20px;
-        }
-
-        .promo-banner {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            text-align: center;
-            padding: 15px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
-        }
-
-        .promo-banner i {
-            font-size: 24px;
-            margin-right: 10px;
-        }
-
+        /* Celular: títulos menores (cabem numa linha, com as linhas laranja dos lados),
+           foto menor e os botões na linha de baixo, com a largura toda */
         @media (max-width: 768px) {
-            .navbar {
-                flex-direction: column;
-                gap: 15px;
+            .cardapio-promo strong {
+                font-size: 1rem;
             }
-            
-            .nav-links {
-                flex-wrap: wrap;
-                justify-content: center;
+
+            .cardapio-colunas .titulo-linhas > * {
+                font-size: clamp(1.1rem, 5.9vw, 1.4rem);
             }
-            
-            .produtos-grid {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+
+            .cardapio-item {
+                grid-template-columns: 60px minmax(0, 1fr);
+                grid-template-areas:
+                    "cabecalho cabecalho"
+                    "foto      descricao"
+                    "acoes     acoes";
+                column-gap: .9rem;
             }
-            
-            .btn-duplo-sabor {
-                font-size: 14px;
-                padding: 12px 20px;
+
+            .cardapio-item__foto {
+                width: 60px;
+                height: 60px;
+                padding: 3px;
             }
         }
     </style>
 </head>
-<body>
-    <header class="header">
-        <nav class="navbar">
-            <div class="logo">Pizzaria do <span>Bairro</span></div>
-            <ul class="nav-links">
-                <li><a href="index.php">Inicio</a></li>
-                <li><a href="cardapio.php">Cardapio</a></li>
-                <?php if(isset($_SESSION['usuario_id'])): ?>
-                    <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
-                    <li><a href="carrinho.php" class="btn-carrinho">
-                        Carrinho
-                    </a></li>
-                    <?php if(isset($_SESSION['tipo_usuario']) && $_SESSION['tipo_usuario'] == 'ADMIN'): ?>
-                        <li><a href="admin/">Admin</a></li>
-                    <?php endif; ?>
-                    <li class="user-info">
-                        <span><?= e($_SESSION['usuario_nome']) ?></span>
-                        <a href="logout.php?token=<?= e(csrf_token()) ?>" class="logout-btn">Sair</a>
+<body class="fundo-xadrez">
+    <!-- Skip Link para acessibilidade -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+
+    <!-- Anúncio para leitores de tela -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveStatus"></div>
+
+    <!-- Menu: coluna fixa na esquerda (computador) ou barra laranja no topo (celular) -->
+    <header class="site-header" id="siteHeader">
+        <div class="site-header__bar">
+            <a class="site-logo" href="index.php" aria-label="Pizzaria do Bairro - página inicial">
+                <img class="site-logo__pilha" src="assets/img/logo-pilha.svg" alt="Pizzaria do Bairro" width="255" height="325">
+                <img class="site-logo__faixa" src="assets/img/logo-faixa.svg" alt="" aria-hidden="true" width="147" height="50">
+            </a>
+            <button type="button" class="nav-toggle" aria-controls="siteMenu" aria-expanded="false">
+                <span class="sr-only">Abrir ou fechar o menu</span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div class="site-header__panel" id="siteMenu">
+            <div class="site-header__acao">
+                <a href="cardapio.php" class="btn btn-bloco">Peça online</a>
+            </div>
+            <nav class="site-nav" aria-label="Menu principal">
+                <ul class="site-nav__menu">
+                    <li><a href="index.php">Início</a></li>
+                    <li class="site-nav__grupo is-open">
+                        <button type="button" class="site-nav__alternar" aria-expanded="true" aria-controls="subCardapio">
+                            Cardápio <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="site-nav__sub" id="subCardapio">
+                            <ul>
+                                <li><a href="cardapio.php" class="is-active" aria-current="page">Todos os sabores</a></li>
+                                <li><a href="pizza-dupla.php">Pizza dois sabores</a></li>
+                            </ul>
+                        </div>
                     </li>
-                <?php else: ?>
-                    <li><a href="login.php">Entrar</a></li>
-                    <li><a href="cadastro.php">Cadastrar</a></li>
-                <?php endif; ?>
-            </ul>
-        </nav>
+                    <?php if(isLoggedIn()): ?>
+                        <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
+                        <li><a href="carrinho.php" aria-label="Ver carrinho de compras">Carrinho</a></li>
+                        <?php if(isAdmin()): ?>
+                            <li><a href="admin/" aria-label="Painel administrativo">Admin</a></li>
+                        <?php endif; ?>
+                        <li class="site-nav__usuario">
+                            <!-- "Usuário:" só para o leitor de tela (aria-label num <span> é ignorado) -->
+                            <i class="fas fa-user" aria-hidden="true"></i> <span class="sr-only">Usuário: </span><?= e($_SESSION['usuario_nome']) ?>
+                        </li>
+                        <li><a href="logout.php?token=<?= e(csrf_token()) ?>" aria-label="Sair do sistema">Sair</a></li>
+                    <?php else: ?>
+                        <li><a href="login.php">Entrar</a></li>
+                        <li><a href="cadastro.php">Cadastrar</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+            <div class="site-social">
+                <ul>
+                    <li><a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a></li>
+                </ul>
+            </div>
+            <p class="site-header__rodape">&copy; 2024 Pizzaria do Bairro</p>
+        </div>
     </header>
 
-    <main class="main-content">
-        <div class="container">
-            <h1>Nosso Cardapio</h1>
-            <p class="subtitulo">As melhores pizzas de Campo Grande - MS</p>
-            
-            <div class="promo-banner">
-                <strong>PROMOCAO ESPECIAL!</strong> Pizza Dois Sabores pelo PRECO MEDIO! Escolha dois sabores e pague a media!
+    <main class="site-content" id="main-content">
+        <?php
+        // Só exibição: o SELECT do topo não tem ORDER BY e o banco devolve as
+        // categorias em ordem alfabética (Bebidas primeiro). Esta CÓPIA segue a
+        // ordem de cadastro (id), para o cardápio começar pelas pizzas.
+        $categorias_cardapio = $categorias;
+        usort($categorias_cardapio, fn($primeira, $segunda) => $primeira['id'] <=> $segunda['id']);
+        ?>
+
+        <!-- Caixa 1: título, promoção e filtros (com a placa balançando no canto).
+             Sem "revealable": ela já está na tela quando a página abre, e cada filtro ou
+             "Adicionar" recarrega a página; a animação repetida deixava o filtro lento. -->
+        <section class="caixa caixa--placa cardapio-topo" aria-labelledby="cardapio-titulo">
+            <h1 id="cardapio-titulo">Nosso Cardápio</h1>
+            <p class="h3 mb-2">As melhores pizzas de Campo Grande - MS</p>
+
+            <div class="bloco-creme cardapio-promo">
+                <p><strong>PROMOÇÃO ESPECIAL!</strong> Pizza Dois Sabores pelo PREÇO MÉDIO! Escolha dois sabores e pague a média!</p>
+                <a href="pizza-dupla.php" class="btn">Monte sua pizza com dois sabores!</a>
+                <small>Escolha dois sabores diferentes e pague apenas a média dos preços!</small>
             </div>
-            
-            <a href="pizza-dupla.php" class="btn-duplo-sabor">
-                MONTE SUA PIZZA COM DOIS SABORES!
-                <small>Escolha dois sabores diferentes e pague apenas a media dos precos!</small>
-            </a>
-            
-            <div class="filtros">
-                <a href="cardapio.php" class="btn-filtro <?php echo !$categoria_id ? 'active' : ''; ?>">Todos</a>
-                <?php foreach($categorias as $cat): ?>
-                    <a href="?categoria=<?= (int) $cat['id'] ?>" class="btn-filtro <?php echo $categoria_id == $cat['id'] ? 'active' : ''; ?>">
-                        <?= e($cat['nome']) ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-            
-            <div class="produtos-grid">
-                <?php foreach($produtos as $produto): ?>
-                    <div class="produto-card">
-                        <div class="imagem-container">
-                            <img src="<?= e($produto['imagem_url']) ?>" 
-                                 alt="<?= e($produto['nome']) ?>"
-                                 class="produto-imagem"
-                                 loading="lazy"
-                                 onerror="this.src='https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Pizza'">
-                            <span class="badge-categoria"><?= e($produto['categoria_nome']) ?></span>
-                        </div>
-                        <div class="produto-info">
-                            <div class="produto-nome"><?= e($produto['nome']) ?></div>
-                            <div class="produto-descricao"><?= e($produto['descricao']) ?></div>
-                            <div class="produto-preco">R$ <?php echo number_format($produto['preco'], 2, ',', '.'); ?></div>
-                            
-                            <?php if(isset($_SESSION['usuario_id'])): ?>
-                                <form method="POST" action="carrinho.php" class="form-carrinho">
-                                    <?= campo_csrf() ?>
-                                    <?php /* Só o ID vai no form: nome e preço o servidor busca no banco */ ?>
-                                    <input type="hidden" name="produto_id" value="<?= (int) $produto['id'] ?>">
-                                    <input type="number" name="quantidade" value="1" min="1" class="quantidade-input">
-                                    <button type="submit" name="add_carrinho" class="btn-adicionar">
-                                        Adicionar
-                                    </button>
-                                </form>
-                            <?php else: ?>
-                                <a href="login.php" class="btn-adicionar" style="display: block; text-align: center; text-decoration: none;">
-                                    Fazer login para pedir
-                                </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
+
+            <!-- Filtros: a pílula da categoria escolhida fica preenchida -->
+            <nav class="cardapio-filtros" aria-label="Filtrar o cardápio por categoria">
+                <ul>
+                    <li><a href="cardapio.php" class="btn btn-pequeno btn-contorno <?php echo !$categoria_id ? 'active' : ''; ?>" <?= !$categoria_id ? 'aria-current="page"' : '' ?>>Todos</a></li>
+                    <?php foreach($categorias_cardapio as $cat): ?>
+                        <li>
+                            <a href="?categoria=<?= (int) $cat['id'] ?>" class="btn btn-pequeno btn-contorno <?php echo $categoria_id == $cat['id'] ? 'active' : ''; ?>" <?= $categoria_id == $cat['id'] ? 'aria-current="page"' : '' ?>>
+                                <?= e($cat['nome']) ?>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </nav>
+        </section>
+
+        <!-- Caixa 2: o cardápio separado por categoria (título com linha laranja dos lados).
+             Aqui quem surge ao rolar são os títulos e os itens, não a caixa inteira: ela é
+             tão alta no celular que ficaria um buraco vazio até aparecer -->
+        <section class="caixa cardapio-menu" aria-label="Produtos do cardápio">
+            <?php if(!$produtos): ?>
+                <p>Nenhum produto disponível por aqui no momento. <a href="cardapio.php">Ver todo o cardápio</a></p>
+            <?php else: ?>
+                <div class="cardapio-colunas">
+                    <?php foreach($categorias_cardapio as $categoria): ?>
+                        <?php
+                        // Só exibição: separa os produtos desta categoria (a lista veio da
+                        // consulta do topo). Com filtro ativo as outras ficam vazias e somem.
+                        $produtos_da_categoria = array_filter($produtos, fn($item) => $item['categoria_id'] == $categoria['id']);
+                        ?>
+                        <?php if($produtos_da_categoria): ?>
+                        <section class="menu-secao" aria-labelledby="categoria-<?= (int) $categoria['id'] ?>">
+                            <div class="titulo-linhas revealable"><h2 id="categoria-<?= (int) $categoria['id'] ?>"><?= e($categoria['nome']) ?></h2></div>
+                            <ul class="menu-lista">
+                                <?php foreach($produtos_da_categoria as $produto): ?>
+                                <li class="menu-item cardapio-item revealable">
+                                    <div class="menu-item__cabecalho">
+                                        <h3 class="menu-item__nome"><?= e($produto['nome']) ?></h3>
+                                        <span class="menu-item__preco">R$ <?php echo number_format($produto['preco'], 2, ',', '.'); ?></span>
+                                    </div>
+                                    <img src="<?= e($produto['imagem_url']) ?>"
+                                         alt="<?= e($produto['nome']) ?>"
+                                         class="cardapio-item__foto"
+                                         width="72" height="72"
+                                         loading="lazy"
+                                         onerror="this.onerror=null;this.src='assets/img/sem-foto.svg'">
+                                    <p class="menu-item__descricao"><?= e($produto['descricao']) ?></p>
+
+                                    <?php if(isset($_SESSION['usuario_id'])): ?>
+                                        <form method="POST" action="carrinho.php" class="menu-item__acoes">
+                                            <?= campo_csrf() ?>
+                                            <?php /* Só o ID vai no form: nome e preço o servidor busca no banco */ ?>
+                                            <input type="hidden" name="produto_id" value="<?= (int) $produto['id'] ?>">
+                                            <label for="quantidade-<?= (int) $produto['id'] ?>" class="sr-only">Quantidade de <?= e($produto['nome']) ?></label>
+                                            <input type="number" id="quantidade-<?= (int) $produto['id'] ?>" name="quantidade" value="1" min="1" class="campo-qtd">
+                                            <button type="submit" name="add_carrinho" class="btn btn-pequeno" aria-label="Adicionar <?= e($produto['nome']) ?> ao carrinho">
+                                                Adicionar
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <div class="menu-item__acoes">
+                                            <a href="login.php" class="btn btn-pequeno btn-contorno">Fazer login para pedir</a>
+                                        </div>
+                                    <?php endif; ?>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </section>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
     </main>
+
+    <script src="assets/js/site.js" defer></script>
+    <script src="assets/js/acessibilidade.js" defer></script>
 </body>
 </html>

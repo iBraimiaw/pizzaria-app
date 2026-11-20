@@ -1,0 +1,1932 @@
+/* =====================================================================
+   style.css - Visual da Pizzaria do Bairro (todas as páginas usam este arquivo)
+
+   Organização:
+     1. Variáveis (cores, fonte, medidas)      8. Seções da página inicial
+     2. Base (reset e textos)                  9. Caixas brancas e cardápio
+     3. Estrutura da página                   10. Tabelas, etiquetas e modal
+     4. Menu lateral / barra do celular       11. Peças soltas (WhatsApp, loading)
+     5. Botões                                12. Animações
+     6. Formulários e avisos                  13. Celular e tablet
+     7. Topo com fotos (hero)
+
+   Regra do projeto: o que é usado em mais de uma página mora AQUI.
+   O que é só de uma página fica no <style> dela, usando as variáveis abaixo.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. VARIÁVEIS
+   Trocar uma cor aqui troca no site inteiro.
+   --------------------------------------------------------------------- */
+:root {
+    --laranja: #ff4f1f;        /* cor da marca: bordas, xadrez, linhas */
+    --salmao: #fb7b5d;         /* laranja claro do logo */
+    --creme: #fbebd2;          /* fundo das páginas de formulário e hover dos botões */
+    --creme-forte: #f9e1bb;    /* botão sendo clicado */
+    --tinta: #2f2f2f;          /* cor do texto */
+    --carvao: #242424;         /* botões e links do menu */
+    --branco: #fff;
+    --erro: #b8322e;           /* vermelho de erro, escuro o bastante para texto pequeno:
+                                  5,9:1 no branco e 5,1:1 no creme (mínimo AA: 4,5:1) */
+    --foco: var(--carvao);     /* contorno de quem navega pelo teclado: aparece no branco,
+                                  no creme e também na barra laranja do celular (4,7:1) */
+    --borda-campo: rgba(36, 36, 36, .5);
+
+    /* Uma fonte só (Archivo). Ela é "variável": o font-stretch muda a largura
+       das letras, então o mesmo arquivo serve para texto, menu e títulos. */
+    --fonte: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    --largura-texto: 107%;      /* texto corrido */
+    --largura-titulo: 114%;     /* títulos pesados (h1, h2) */
+    --largura-rotulo: 115%;     /* menu e botões */
+    --largura-subtitulo: 122%;  /* h3 e nome dos itens do cardápio */
+
+    --moldura: 2vw;             /* distância do menu lateral até a borda da tela */
+    --lateral: 275px;           /* largura do menu lateral */
+    --recuo: 0px;               /* espaço que o conteúdo deixa para o menu lateral */
+    --vao: 43px;                /* folga entre o menu lateral e o conteúdo */
+
+    --borda: 2px solid var(--laranja);
+    --sombra: 0 0 10px rgba(0, 0, 0, .4);
+    --sombra-forte: 0 0 10px rgba(0, 0, 0, .8);
+    --transicao: all .2s ease-in-out;
+}
+
+/* No computador o menu fica fixo na esquerda, então o conteúdo precisa "recuar".
+   "width > 768px" (e não "min-width: 769px"): com zoom no navegador a largura pode
+   ser 768,5px, e aí nenhuma das duas regras (celular/computador) valeria. */
+@media (width > 768px) {
+    :root {
+        --recuo: calc(var(--moldura) + var(--lateral));
+    }
+}
+
+/* ---------------------------------------------------------------------
+   2. BASE
+   --------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: var(--fonte);
+    font-stretch: var(--largura-texto);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--tinta);
+    background-color: var(--branco);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fundos de página: escolha um e ponha a classe no <body> */
+body.fundo-xadrez {
+    background: var(--laranja) url('../img/xadrez.svg') 0 0 / 400px;
+}
+
+body.fundo-creme {
+    background-color: var(--creme);
+}
+
+/* Trava a rolagem enquanto o menu do celular está aberto */
+body.sem-rolagem {
+    overflow: hidden;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+a {
+    color: inherit;
+    text-decoration: underline;
+    transition: color .2s ease-in-out;
+}
+
+a:hover {
+    color: rgba(47, 47, 47, .7);
+}
+
+p {
+    margin: 0 0 1rem;
+}
+
+ul,
+ol {
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+}
+
+hr {
+    width: 60%;
+    border: 0;
+    border-top: var(--borda);
+    margin: 2rem auto;
+}
+
+small {
+    font-size: .8rem;
+}
+
+/* Títulos: sempre em maiúsculas, letras largas e pesadas */
+h1, h2, h3, h4,
+.h1, .h2, .h3, .h4 {
+    margin: 0 0 .5rem;
+    font-family: var(--fonte);
+    line-height: 1.1;
+    text-transform: uppercase;
+    color: var(--tinta);
+    overflow-wrap: break-word;
+    text-wrap: balance;        /* título em 2 linhas fica com as linhas parelhas */
+}
+
+h1, .h1,
+h2, .h2 {
+    font-weight: 900;
+    font-stretch: var(--largura-titulo);
+    margin-bottom: 1.5rem;
+}
+
+h1, .h1 { font-size: 3rem; }
+h2, .h2 { font-size: 2.5rem; }
+
+h3, .h3,
+h4, .h4 {
+    font-weight: 700;
+    font-stretch: var(--largura-subtitulo);
+}
+
+h3, .h3 { font-size: 1.25rem; }
+h4, .h4 { font-size: 1rem; }
+
+/* Texto que só o leitor de tela "enxerga" */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* (as classes utilitárias - .texto-centro, .mb-0... - ficam no fim do arquivo, seção 14) */
+
+/* ---------------------------------------------------------------------
+   3. ESTRUTURA DA PÁGINA
+   <main class="site-content"> guarda tudo. Ele já deixa livre o espaço do
+   menu lateral (padding-left: --recuo), então nada fica escondido atrás dele.
+   --------------------------------------------------------------------- */
+.site-content {
+    position: relative;
+    z-index: 0;
+    min-height: 90vh;
+    padding-left: var(--recuo);
+    overflow: hidden;
+}
+
+/* Bloco de texto centralizado (largura máxima confortável para leitura) */
+.container,
+.container-sm {
+    margin: 0 2rem 0 var(--vao);
+    padding: 4rem 3rem 3rem;
+    text-align: center;
+}
+
+.container > h1,
+.container > h2,
+.container > h3,
+.container > p {
+    max-width: 1010px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Versão estreita: formulários (login, cadastro...) */
+.container-sm {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (width > 768px) {
+    /* A primeira caixa da página começa na mesma altura da borda do menu lateral */
+    .site-content > .caixa:first-child {
+        margin-top: var(--moldura);
+    }
+}
+
+/* ---------------------------------------------------------------------
+   4. MENU LATERAL (computador) / BARRA LARANJA (celular)
+   É o mesmo HTML nos dois casos; só o CSS muda conforme a largura da tela.
+   --------------------------------------------------------------------- */
+.skip-link {
+    position: absolute;
+    top: -1000px;
+    left: -1000px;
+    z-index: 1000;
+    padding: 7px;
+    background: #000;
+    color: #fff;
+}
+
+.skip-link:focus {
+    top: 0;
+    left: 0;
+    color: #fff;
+}
+
+.site-header {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    width: var(--lateral);
+    margin: var(--moldura) 0 var(--moldura) var(--moldura);
+    background: var(--branco);
+    border: var(--borda);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.site-header__bar {
+    padding: .5rem;
+}
+
+.site-logo {
+    display: block;
+    text-align: center;
+    line-height: 0;
+}
+
+.site-logo img {
+    display: inline-block;
+    width: 100%;
+    height: auto;
+}
+
+/* O logo em faixa (branco) só aparece na barra do celular */
+.site-logo .site-logo__faixa,
+.nav-toggle {
+    display: none;
+}
+
+.site-header__panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.site-header__acao {
+    margin-top: 1rem;
+    padding: 0 1.5rem;
+}
+
+.site-nav {
+    padding: 1rem 1.5rem;
+    font-size: .9rem;
+    font-weight: 700;
+    font-stretch: var(--largura-rotulo);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.site-nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-nav__menu > li {
+    line-height: 1.5;
+}
+
+.site-nav a,
+.site-nav__alternar {
+    position: relative;
+    display: inline-block;
+    padding: .5em;
+    font: inherit;
+    line-height: 1.2;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    text-decoration: none;
+    color: var(--carvao);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.site-nav a:hover,
+.site-nav__alternar:hover {
+    color: var(--carvao);
+}
+
+/* Risquinho que "cresce" embaixo do link ao passar o mouse (ou na página atual) */
+.site-nav a::before,
+.site-nav__alternar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 4px;
+    width: calc(100% - 1rem);
+    height: 2px;
+    margin: auto;
+    background: var(--carvao);
+    transform: scaleX(0);
+    transition: .2s ease all;
+}
+
+.site-nav a:hover::before,
+.site-nav a.is-active::before,
+.site-nav__alternar:hover::before,
+.site-nav__grupo.is-open > .site-nav__alternar::before {
+    transform: scaleX(1);
+}
+
+.site-nav__alternar .fa-chevron-down {
+    margin-left: .3em;
+    font-size: .55em;
+    vertical-align: middle;
+    transition: transform .2s ease;
+}
+
+.site-nav__grupo.is-open > .site-nav__alternar .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+/* Submenu (abre ao clicar em "Cardápio") */
+.site-nav__sub {
+    display: none;
+    font-size: .765em;
+    padding-bottom: .5em;
+}
+
+.site-nav__grupo.is-open > .site-nav__sub {
+    display: block;
+}
+
+.site-nav__sub a {
+    padding: .25em .5em;
+    line-height: 2;
+}
+
+.site-nav__sub a::before {
+    bottom: 2px;
+}
+
+/* Nome de quem está logado (separado dos links por um pontilhado, como as linhas de dados) */
+.site-nav__usuario {
+    margin-top: .75rem;
+    padding: .75rem .5rem 0;
+    border-top: 2px dotted var(--borda-campo);
+    font-weight: 400;
+    font-stretch: var(--largura-texto);
+    font-size: .875rem;
+    letter-spacing: 0;
+    text-transform: none;
+    overflow-wrap: anywhere;
+}
+
+.site-social {
+    margin-top: auto;
+    padding: 1.1rem 1.5rem .5rem;
+    border-top: var(--borda);
+    text-align: center;
+}
+
+.site-social ul {
+    display: flex;
+    justify-content: center;
+    gap: .25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-social a {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+    line-height: 36px;
+    text-decoration: none;
+    color: var(--carvao);
+}
+
+.site-social a:hover {
+    color: rgba(36, 36, 36, .7);
+}
+
+.site-header__rodape {
+    margin: 0;
+    padding: .5rem 1rem .75rem;
+    font-size: 14px;
+    text-align: center;
+    color: var(--carvao);
+}
+
+/* Telas baixas (notebook de 768px de altura, com a barra do navegador): o logo
+   encolhe e os espaços diminuem para o menu caber sem barra de rolagem,
+   mesmo logado e com o grupo "Cardápio" aberto */
+@media (width > 768px) and (max-height: 820px) {
+    .site-logo .site-logo__pilha {
+        width: auto;
+        max-height: 28vh;
+    }
+
+    .site-header__acao {
+        margin-top: .5rem;
+    }
+
+    .site-nav {
+        padding-top: .5rem;
+        padding-bottom: .5rem;
+    }
+
+    .site-nav__usuario {
+        margin-top: .25rem;
+        padding-top: .5rem;
+    }
+
+    .site-social {
+        padding-top: .6rem;
+    }
+}
+
+@media (width > 768px) and (max-height: 700px) {
+    .site-header__rodape {
+        display: none;
+    }
+}
+
+/* ---------------------------------------------------------------------
+   5. BOTÕES
+   Escuro por padrão; no hover fica creme com a borda escura.
+   --------------------------------------------------------------------- */
+.btn {
+    display: inline-block;
+    padding: .55rem 1.25rem .5rem;
+    font-family: var(--fonte);
+    font-size: .9rem;
+    font-weight: 700;
+    font-stretch: var(--largura-rotulo);
+    line-height: 1.5;
+    letter-spacing: 1px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;       /* no computador o texto do botão fica numa linha só */
+    vertical-align: middle;
+    max-width: 100%;           /* ...mas o botão nunca passa da largura de quem o contém */
+    color: var(--branco);
+    background-color: var(--carvao);
+    border: 2px solid var(--carvao);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: var(--transicao);
+}
+
+.btn:hover,
+.btn:focus-visible {
+    color: var(--carvao);
+    background-color: var(--creme);
+    border-color: var(--carvao);
+}
+
+.btn:active {
+    color: var(--carvao);
+    background-color: var(--creme-forte);
+    border-color: var(--carvao);
+}
+
+.btn:disabled,
+.btn.disabled,
+.btn[aria-disabled='true'] {
+    opacity: .5;
+    cursor: not-allowed;
+    color: var(--branco);
+    background-color: var(--carvao);
+    border-color: var(--carvao);
+}
+
+/* Variações */
+.btn-bloco {
+    display: block;
+    width: 100%;
+}
+
+.btn-pequeno {
+    padding: .3rem .9rem .25rem;
+    font-size: .75rem;
+}
+
+.btn-contorno {
+    color: var(--carvao);
+    background-color: transparent;
+}
+
+.btn-contorno:hover,
+.btn-contorno:focus-visible {
+    color: var(--branco);
+    background-color: var(--carvao);
+}
+
+/* Link discreto para ações destrutivas ("Remover") */
+.link-perigo {
+    color: var(--erro);
+    font-weight: 700;
+    font-size: .875rem;
+}
+
+.link-perigo:hover {
+    color: var(--carvao);
+}
+
+/* ---------------------------------------------------------------------
+   6. FORMULÁRIOS E AVISOS
+   Rótulo pequeno em negrito em cima, campo branco de cantos redondos.
+   --------------------------------------------------------------------- */
+.form-ui {
+    text-align: left;
+}
+
+.form-group {
+    display: block;
+    position: relative;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.form-group > label {
+    display: block;
+    margin-bottom: .25rem;
+    padding-left: 3px;
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--tinta);
+}
+
+.form-group > label em {
+    font-style: italic;
+}
+
+/* :where() zera a "força" (especificidade) do que está dentro dele. Sem isso,
+   cada :not([type]) contava como uma classe e este seletor ganhava da regra
+   de :focus logo abaixo: a borda dos campos não escurecia ao receber o foco. */
+.form-control,
+.form-group :where(input:not([type='checkbox'], [type='radio'], [type='hidden'])),
+.form-group select,
+.form-group textarea {
+    display: block;
+    width: 100%;
+    height: 3rem;
+    padding: .75rem;
+    font-family: var(--fonte);
+    font-stretch: var(--largura-texto);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--carvao);
+    background-color: var(--branco);
+    border: 2px solid var(--borda-campo);
+    border-radius: 20px;
+    transition: border-color .2s linear;   /* só a borda anima: o contorno de foco aparece na hora */
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+textarea.form-control,
+.form-group textarea {
+    height: auto;
+    min-height: 9rem;
+}
+
+/* A setinha do <select> é desenhada aqui porque o appearance:none tira a original */
+select.form-control,
+.form-group select {
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath fill='none' stroke='%23242424' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M2 2l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 14px;
+}
+
+.form-control::placeholder,
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: rgba(36, 36, 36, .7);
+    opacity: 1;
+}
+
+.form-control:focus,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--carvao);
+    outline: 3px solid var(--foco);
+    outline-offset: 0;
+}
+
+/* Campo de quantidade (pequeno, número no meio) */
+.campo-qtd {
+    display: inline-block;
+    width: 5rem;
+    height: 2.6rem;
+    padding: .4rem .5rem;
+    font-family: var(--fonte);
+    font-size: 16px;
+    text-align: center;
+    color: var(--carvao);
+    background: var(--branco);
+    border: 2px solid var(--borda-campo);
+    border-radius: 20px;
+}
+
+.campo-qtd:focus {
+    border-color: var(--carvao);
+    outline: 3px solid var(--foco);
+}
+
+.form-acoes {
+    margin-top: 2rem;
+}
+
+/* Avisos (sucesso, erro, informação). Canto reto de propósito: no site só campo
+   e botão são arredondados; um aviso arredondado ficava com cara de campo de texto. */
+.alert {
+    margin: 0 0 1.5rem;
+    padding: .75rem 1rem;
+    text-align: left;
+    color: var(--tinta);
+    background: var(--branco);
+    border: 2px solid var(--carvao);
+}
+
+.alert-info {
+    border-color: var(--laranja);
+}
+
+.alert-danger {
+    color: var(--erro);
+    border-color: var(--erro);
+}
+
+/* Dica do campo maior que o campo: termina em "..." em vez de cortar no meio */
+.form-group input:placeholder-shown {
+    text-overflow: ellipsis;
+}
+
+/* Caixa "Não sou um robô" (reCAPTCHA): o Google desenha com 304px fixos.
+   O contêiner tem a largura exata dela, então no computador ela fica
+   alinhada à esquerda, com os campos e o botão. */
+.caixa-robo {
+    width: 304px;
+    max-width: 100%;
+}
+
+/* Lista de exigências da senha (o JavaScript troca as classes valid/invalid).
+   O ícone fica numa coluna só dele: se o texto quebrar em duas linhas,
+   a segunda não começa embaixo do ícone. */
+.senha-requisitos {
+    display: flex;
+    align-items: baseline;
+    gap: .4em;
+    margin-top: .3rem;
+    padding-left: 3px;
+    font-size: .8rem;
+    color: rgba(36, 36, 36, .7);
+}
+
+.senha-requisitos i {
+    flex: none;
+}
+
+.senha-requisitos.valid {
+    color: var(--carvao);
+    font-weight: 700;
+}
+
+/* Requisito que falta: texto escuro (fácil de ler no creme) e o ícone em vermelho */
+.senha-requisitos.invalid {
+    color: var(--tinta);
+}
+
+.senha-requisitos.invalid i {
+    color: var(--erro);
+}
+
+/* ---------------------------------------------------------------------
+   7. TOPO COM FOTOS (HERO)
+   Ocupa a tela inteira. As fotos se alternam com um "fade".
+   --------------------------------------------------------------------- */
+.hero {
+    position: relative;
+    height: 100vh;
+    min-height: 420px;
+    margin-left: calc(var(--recuo) * -1);
+    color: var(--branco);
+    text-align: center;
+    background-color: var(--branco);
+    border-bottom: var(--borda);
+    overflow: hidden;
+}
+
+.hero__slides,
+.hero__slide {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.hero__slide {
+    background-color: var(--tinta);
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 2s ease;
+}
+
+.hero__slide.is-active {
+    opacity: 1;
+}
+
+.hero__seta {
+    position: absolute;
+    top: 50%;
+    z-index: 5;
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    font-size: 50px;
+    line-height: 1;
+    color: var(--branco);
+    text-shadow: 0 0 10px #000;
+    background: none;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: var(--transicao);
+}
+
+.hero__seta:hover {
+    color: rgba(255, 255, 255, .65);
+}
+
+.hero__seta--anterior { left: calc(var(--recuo) + 30px); }
+.hero__seta--proxima { right: 30px; }
+
+.hero__pausa {
+    position: absolute;
+    left: var(--recuo);
+    right: 0;
+    bottom: 80px;
+    z-index: 5;
+    width: 54px;
+    height: 54px;
+    margin: auto;
+    padding: 0;
+    font-size: 30px;
+    line-height: 1;
+    color: var(--branco);
+    filter: drop-shadow(0 0 5px #000);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    transition: var(--transicao);
+}
+
+.hero__pausa:hover {
+    color: rgba(255, 255, 255, .65);
+}
+
+/* Título por cima da foto (caso alguma página coloque um <h1> dentro do hero) */
+.hero h1 {
+    margin-bottom: .5rem;
+    font-size: 4.5rem;
+    color: var(--branco);
+    text-shadow: 0 0 5px rgba(0, 0, 0, .9);
+}
+
+/* ---------------------------------------------------------------------
+   8. SEÇÕES DA PÁGINA INICIAL
+   --------------------------------------------------------------------- */
+
+/* 8.1 Faixa de fundo: creme ou xadrez, de ponta a ponta da tela */
+.faixa {
+    position: relative;
+    margin-left: calc(var(--recuo) * -1);
+    padding-left: var(--recuo);
+}
+
+.faixa--creme {
+    background-color: var(--creme);
+}
+
+.faixa--xadrez {
+    background: var(--laranja) url('../img/xadrez.svg') center / 400px;
+    border-top: var(--borda);
+    border-bottom: var(--borda);
+}
+
+/* 8.2 Cartão de texto inclinado + foto inclinada, sobre o xadrez */
+.split {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    min-height: 65vh;
+    margin: 4rem 0;
+}
+
+.split::before {
+    content: '';
+    position: absolute;
+    top: -2rem;
+    right: 0;
+    bottom: -2rem;
+    left: calc(var(--recuo) * -1);
+    z-index: -1;
+    background: var(--laranja) url('../img/xadrez.svg') center / 400px;
+    border-top: var(--borda);
+    border-bottom: var(--borda);
+}
+
+.split__cartao {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 35%;
+    max-width: 35%;
+}
+
+.split__cartao-interno {
+    padding: 3rem 3rem 2rem;
+    text-align: center;
+    background: var(--branco);
+    border-top: var(--borda);
+    border-bottom: var(--borda);
+    box-shadow: var(--sombra);
+    transform: translateX(2rem) rotate(-3deg);
+    transition: .9s ease-in-out all;
+}
+
+.split__foto {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 65%;
+    max-width: 65%;
+    min-height: 65vh;
+    background: var(--tinta) center / cover no-repeat;
+    border: 1rem solid var(--branco);
+    box-shadow: var(--sombra);
+    transform: translateX(-2rem) rotate(3deg);
+    transition: .9s ease-in-out all;
+}
+
+/* Lista de vantagens dentro do cartão */
+.lista-vantagens {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lista-vantagens li {
+    margin-bottom: 1.25rem;
+}
+
+.lista-vantagens h3 {
+    margin-bottom: .25rem;
+    font-size: 1rem;
+}
+
+.lista-vantagens p {
+    margin: 0;
+}
+
+.lista-vantagens .fas {
+    display: block;
+    margin-bottom: .4rem;
+    font-size: 1.5rem;
+    color: var(--laranja);
+}
+
+/* 8.3 Fotos estilo "polaroid": cartão branco, sombra forte e leve inclinação.
+   Flex (e não grid) para a foto que "sobra" numa linha ficar centralizada,
+   e max-width para a foto não ficar gigante quando sobra uma por linha. */
+.polaroids {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3rem 2.5rem;
+    max-width: 1010px;
+    margin: 2.5rem auto 1rem;
+    padding: 0 1rem;
+    list-style: none;
+}
+
+.polaroid {
+    flex: 1 1 220px;
+    max-width: 300px;
+    transition: .5s ease all;
+}
+
+.polaroid:nth-child(odd) { transform: rotate(-4deg); }
+.polaroid:nth-child(even) { transform: rotate(4deg); }
+.polaroid:nth-child(odd):hover { transform: rotate(-1deg); }
+.polaroid:nth-child(even):hover { transform: rotate(1deg); }
+
+.polaroid__moldura {
+    display: block;
+    height: 100%;
+    padding: .5rem .5rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--tinta);
+    background: var(--branco);
+    box-shadow: var(--sombra-forte);
+}
+
+.polaroid__moldura:hover {
+    color: var(--tinta);
+}
+
+.polaroid__foto {
+    display: block;
+    width: 100%;
+    aspect-ratio: 10 / 9;
+    margin-bottom: .75rem;
+    object-fit: cover;
+    background: var(--tinta);
+}
+
+.polaroid__titulo {
+    margin: 0 0 .5rem;
+    font-size: 1.25rem;
+}
+
+.polaroid__texto {
+    margin: 0 0 .5rem;
+    line-height: 1.2;
+}
+
+.polaroid__preco {
+    margin: 0;
+    font-weight: 700;
+    font-stretch: var(--largura-subtitulo);
+    font-size: 1.25rem;
+}
+
+/* 8.4 Chamada com foto de fundo e cartão branco no meio */
+.tout {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 65vh;
+    min-height: 420px;
+    margin-left: calc(var(--recuo) * -1);
+    padding: 2rem 1rem 2rem calc(var(--recuo) + 1rem);
+    text-align: center;
+    background: var(--tinta) center / cover no-repeat;
+}
+
+.tout__cartao {
+    width: 100%;
+    max-width: 640px;
+    padding: 4rem 3rem;
+    background: var(--branco);
+    border-top: var(--borda);
+    border-bottom: var(--borda);
+    box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+}
+
+.tout__cartao h2 {
+    margin-bottom: .5rem;
+    font-size: 3rem;
+}
+
+/* ---------------------------------------------------------------------
+   9. CAIXAS BRANCAS E CARDÁPIO
+   --------------------------------------------------------------------- */
+
+/* Caixa branca de borda laranja (usada sobre o xadrez) */
+.caixa {
+    position: relative;
+    margin: 2rem 2rem 2rem var(--vao);
+    padding: 4rem 3rem 3rem;
+    text-align: center;
+    background: var(--branco);
+    border: var(--borda);
+}
+
+.caixa > :last-child {
+    margin-bottom: 0;
+}
+
+.caixa--estreita {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* No computador, a margem automática deixava a caixa estreita encostar no menu
+   lateral quando a janela era média (769 a ~1100px): agora ela nunca fica
+   mais perto do que a folga padrão (--vao) */
+@media (width > 768px) {
+    .caixa--estreita {
+        margin-left: max(var(--vao), calc((100% - 760px) / 2));
+        margin-right: max(2rem, calc((100% - 760px) / 2));
+    }
+}
+
+/* Placa balançando no canto de baixo da caixa. A placa tem 150px e fica 1,5rem
+   para fora da borda, então ocupa ~126px de dentro da caixa: o espaço de baixo
+   (8,5rem = 136px) é maior que isso, e ela nunca cobre o conteúdo. */
+.caixa--placa {
+    padding-bottom: 8.5rem;
+}
+
+.caixa--placa::after {
+    content: '';
+    position: absolute;
+    right: 2rem;
+    bottom: -1.5rem;
+    width: 150px;
+    height: 150px;
+    background: url('../img/placa-laranja.svg') center / contain no-repeat;
+    animation: balanco 4s infinite linear;
+    pointer-events: none;
+}
+
+/* Título com uma linha laranja de cada lado:  ———— PIZZAS ———— */
+.titulo-linhas {
+    position: relative;
+    margin: 0 0 1.5rem;
+    text-align: center;
+}
+
+.titulo-linhas::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    margin: auto;
+    background: var(--laranja);
+}
+
+/* Tamanho único para os títulos de seção dentro das caixas (carrinho, pizza dois
+   sabores, comprovante...). Só o cardápio usa um pouco maior, no <style> dele. */
+.titulo-linhas > * {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    max-width: 90%;
+    margin: 0;
+    padding: 0 5px;
+    font-size: 1.5rem;
+    background: var(--branco);
+}
+
+/* Duas colunas lado a lado (carrinho, pizza dois sabores). Só a partir de 1280px:
+   abaixo disso, com o menu lateral, as colunas ficam estreitas e os nomes
+   quebrariam no meio da palavra, então vira uma coluna só. */
+.menu-colunas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 60px;
+    text-align: left;
+}
+
+@media (min-width: 1280px) {
+    .menu-colunas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.menu-secao {
+    margin-bottom: 1.5rem;
+    padding-top: 1.5rem;
+}
+
+.menu-lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.menu-item {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+/* Nome .......... preço  (o pontilhado é a borda de baixo) */
+.menu-item__cabecalho {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-stretch: var(--largura-subtitulo);
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--tinta);
+    border-bottom: 4px dotted #000;
+}
+
+.menu-item__nome {
+    margin: 0;
+    font: inherit;
+    line-height: inherit;
+}
+
+.menu-item__preco {
+    white-space: nowrap;
+}
+
+.menu-item__descricao {
+    margin: 0;
+    text-wrap: pretty;         /* evita uma palavra sozinha na última linha */
+}
+
+.menu-item__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    margin-top: .6rem;
+}
+
+/* Linha "rótulo ........ valor" (resumo do pedido, dados do pedido).
+   baseline: quando o valor quebra em duas linhas (endereço comprido),
+   o rótulo fica na altura da primeira linha dele. */
+.linha-dado {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .5rem 0;
+    text-align: left;
+    border-bottom: 2px dotted rgba(36, 36, 36, .5);
+}
+
+/* Rótulo da linha (o primeiro filho: <dt> ou <span>): o mesmo desenho em todas as
+   páginas do pedido - maiúsculas pequenas e espaçadas, que não encolhem */
+.linha-dado:not(.linha-dado--total) > :first-child {
+    flex: none;
+    font-size: .8rem;
+    font-weight: 700;
+    font-stretch: var(--largura-rotulo);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.linha-dado > :last-child {
+    text-align: right;
+    text-wrap: balance;
+}
+
+/* Quando a linha é um par <dt>/<dd> de uma lista <dl> */
+.linha-dado > dd {
+    margin: 0;                  /* o navegador recua o <dd> em 40px por padrão */
+    overflow-wrap: anywhere;    /* endereço sem espaços quebra em vez de vazar */
+}
+
+.linha-dado--total {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-stretch: var(--largura-subtitulo);
+    text-transform: uppercase;
+    border-bottom: 4px dotted #000;
+}
+
+/* ---------------------------------------------------------------------
+   10. TABELAS, ETIQUETAS E MODAL
+   --------------------------------------------------------------------- */
+.tabela {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.tabela th {
+    padding: .5rem;
+    font-size: .8rem;
+    font-weight: 700;
+    font-stretch: var(--largura-rotulo);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: var(--borda);
+}
+
+/* O pontilhado fica na LINHA (tr), que só aceita borda porque a tabela usa
+   border-collapse: collapse. O navegador ainda desenha os pontinhos célula a
+   célula, então com zoom dá para ver uma pequena emenda entre as colunas. */
+.tabela tbody tr {
+    border-bottom: 2px dotted rgba(36, 36, 36, .5);
+}
+
+/* baseline: se o nome do produto quebrar em duas linhas, os valores
+   ficam na altura da primeira linha dele */
+.tabela td {
+    padding: .75rem .5rem;
+    vertical-align: baseline;
+}
+
+.tabela tfoot td {
+    font-weight: 700;
+}
+
+.tabela .num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Etiqueta de situação do pedido. É INFORMAÇÃO, não botão: no site a pílula é
+   só de botão, então a etiqueta é um "carimbo" - canto reto, leve inclinação
+   (como as peças tortas da referência) e uma bolinha com a cor da situação.
+   Texto sempre escuro: laranja só serve de fundo ou enfeite (contraste). */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .45em;
+    padding: .2rem .55rem;
+    font-size: .75rem;
+    font-weight: 700;
+    font-stretch: var(--largura-rotulo);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--carvao);
+    background: var(--branco);
+    border: 2px solid var(--carvao);
+    transform: rotate(-2deg);
+}
+
+.status-badge::before {
+    content: '';
+    flex: none;
+    width: .6em;
+    height: .6em;
+    border-radius: 50%;
+    background: var(--cor-status, var(--carvao));
+}
+
+.status-badge--warning { --cor-status: var(--laranja); background: var(--creme); }   /* pendente */
+.status-badge--info { --cor-status: var(--laranja); border-color: var(--laranja); }   /* preparando */
+.status-badge--primary { background: var(--laranja); border-color: var(--laranja); }  /* saiu: carvão no laranja = 4,7:1 */
+.status-badge--danger { --cor-status: var(--erro); color: var(--erro); border-color: var(--erro); } /* cancelado */
+/* --success (entregue) usa o desenho base: branco, borda e bolinha escuras */
+
+/* Janela por cima da página (detalhes do pedido) */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 200;
+    padding: 2rem 1rem;
+    overflow: auto;
+    background: rgba(36, 36, 36, .85);
+}
+
+.modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 4vh auto;
+    padding: 2rem;
+    text-align: left;
+    background: var(--branco);
+    border: var(--borda);
+}
+
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.close {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: .8;
+    color: var(--laranja);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    transition: var(--transicao);
+}
+
+.close:hover,
+.close:focus-visible {
+    color: var(--carvao);
+}
+
+/* ---------------------------------------------------------------------
+   11. PEÇAS SOLTAS
+   --------------------------------------------------------------------- */
+
+/* Botão flutuante do WhatsApp */
+.whatsapp-float {
+    position: fixed;
+    right: 2rem;
+    bottom: 2rem;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    font-size: 30px;
+    text-decoration: none;
+    color: var(--branco);
+    background: var(--carvao);
+    border: 2px solid var(--carvao);
+    border-radius: 50%;
+    box-shadow: var(--sombra);
+    transition: var(--transicao);
+}
+
+.whatsapp-float:hover,
+.whatsapp-float:focus-visible {
+    color: var(--carvao);
+    background: var(--creme);
+}
+
+/* Com o menu do celular aberto o botão sumiria atrás do painel... mas ele fica
+   por cima (z-index maior). Então ele se esconde enquanto o menu está aberto. */
+body.sem-rolagem .whatsapp-float {
+    display: none;
+}
+
+/* Tela de "carregando" */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 10002;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(36, 36, 36, .7);
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--creme);
+    border-top-color: var(--laranja);
+    border-radius: 50%;
+    animation: girar 1s linear infinite;
+}
+
+/* Página de formulário (login, cadastro, senha): título + campos sobre o creme */
+.pagina-form {
+    position: relative;
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+}
+
+/* O título dá o respiro até o formulário; se houver frase de apoio logo
+   embaixo dele, ela sobe e fica mais perto do título */
+.pagina-form h1 {
+    margin-bottom: 2rem;
+}
+
+.pagina-form h1 + p {
+    margin-top: -1rem;
+}
+
+.pagina-form > p {
+    margin-bottom: 2rem;
+}
+
+.pagina-form .btn {
+    margin-top: .5rem;
+}
+
+.pagina-form__links {
+    margin: 2rem 0 0;
+    text-align: center;
+}
+
+/* Placa laranja balançando no canto de cima (enfeite das páginas de formulário) */
+.enfeite-placa {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    width: 150px;
+    height: 150px;
+    background: url('../img/placa-laranja.svg') center / contain no-repeat;
+    animation: balanco 4s infinite linear;
+    pointer-events: none;
+}
+
+/* Botões lado a lado, quebrando linha quando não couber */
+.grupo-botoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+/* Ícone grande de destaque (ex.: check do pedido confirmado) */
+.icone-destaque {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: 3.5rem;
+    line-height: 1;
+    color: var(--laranja);
+}
+
+/* Bloco interno com fundo creme (avisos de promoção, resumo, extras) */
+.bloco-creme {
+    margin: 0 0 1.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    background: var(--creme);
+    border-top: var(--borda);
+    border-bottom: var(--borda);
+}
+
+.bloco-creme > :last-child {
+    margin-bottom: 0;
+}
+
+/* Rodapé simples dentro das caixas */
+.rodape-linha {
+    margin: 2rem 0 0;
+    font-size: 14px;
+    color: var(--carvao);
+}
+
+/* Colunas de informação (endereço, horário, pagamento).
+   Coluna com no mínimo 240px: abaixo disso a palavra "FUNCIONAMENTO" não cabe
+   e o título quebraria no meio da palavra. Flex (e não grid) para a coluna que
+   "sobra" sozinha na segunda linha ficar centralizada. */
+.info-colunas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    max-width: 1010px;
+    margin: 0 auto;
+}
+
+.info-colunas > * {
+    flex: 1 1 240px;
+    max-width: 320px;
+}
+
+.info-colunas h3 {
+    margin-bottom: .75rem;
+    font-size: 1.1rem;
+}
+
+.info-colunas p {
+    margin-bottom: .25rem;
+}
+
+/* ---------------------------------------------------------------------
+   12. ANIMAÇÕES
+   --------------------------------------------------------------------- */
+@keyframes balanco {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(5deg); }
+}
+
+@keyframes girar {
+    to { transform: rotate(360deg); }
+}
+
+/* "Revelar ao rolar": o site.js põe a classe .revealed quando o bloco entra na tela.
+   Só vale com JavaScript ligado (classe .js no <html>), senão o conteúdo sumiria. */
+.js .revealable {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: 1s ease all;
+}
+
+.js .revealable.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* O split entra de lado: o cartão vem da esquerda e a foto da direita */
+.js .split.revealable {
+    opacity: 1;
+    transform: none;
+}
+
+.js .split.revealable .split__cartao-interno {
+    opacity: 0;
+    transform: translateX(-100%) rotate(-25deg);
+}
+
+.js .split.revealable .split__foto {
+    transform: translateX(100%) rotate(25deg);
+}
+
+.js .split.revealed .split__cartao-interno {
+    opacity: 1;
+    transform: translateX(2rem) rotate(-3deg);
+}
+
+.js .split.revealed .split__foto {
+    transform: translateX(-2rem) rotate(3deg);
+}
+
+/* ---------------------------------------------------------------------
+   13. CELULAR E TABLET
+   --------------------------------------------------------------------- */
+
+/* Foto de fundo "parada" enquanto a página rola (só em telas grandes) */
+@media (min-width: 992px) {
+    .tout {
+        background-attachment: fixed;
+    }
+}
+
+/* Tablet deitado / notebook pequeno: o split empilha (foto em cima, cartão embaixo) */
+@media (max-width: 1160px) {
+    .split {
+        flex-direction: column-reverse;
+        min-height: 0;
+        padding: 1rem 2rem 1rem 0;
+    }
+
+    .split__cartao,
+    .split__foto {
+        flex: none;
+        max-width: none;
+    }
+
+    .split__foto {
+        align-self: stretch;
+        min-height: 45vh;
+        margin-left: 2rem;
+    }
+
+    .split__cartao {
+        width: min(100%, 460px);
+        margin: -3rem auto 0;
+    }
+
+    .split__cartao-interno,
+    .js .split.revealed .split__cartao-interno {
+        transform: rotate(-3deg);
+    }
+
+    .split__foto,
+    .js .split.revealed .split__foto {
+        transform: rotate(3deg);
+    }
+
+    .hero h1 {
+        font-size: 3.5rem;
+    }
+}
+
+/* Até 1024px (celular, tablet e computador estreito, onde o menu lateral rouba
+   espaço) o texto do botão pode quebrar em duas linhas parelhas em vez de vazar */
+@media (max-width: 1024px) {
+    .btn {
+        white-space: normal;
+        text-wrap: balance;
+    }
+}
+
+/* Sem espaço sobrando ao lado do formulário: o enfeite some para não cobrir nada */
+@media (max-width: 1280px) {
+    .enfeite-placa {
+        display: none;
+    }
+}
+
+/* Celular: o menu lateral vira uma barra laranja no topo */
+@media (max-width: 768px) {
+    /* A barra laranja fica grudada no topo (~76px): sem esta folga, o "Pular para o
+       conteúdo" e o campo que recebe o foco com Shift+Tab ficariam escondidos atrás dela */
+    html {
+        scroll-padding-top: 5.5rem;
+    }
+
+    h1, .h1 { font-size: clamp(1.9rem, 9vw, 2.75rem); }
+    h2, .h2 { font-size: clamp(1.7rem, 8vw, 2.25rem); }
+    h3, .h3 { font-size: 1rem; }
+    h4, .h4 { font-size: .9rem; }
+
+    .site-header {
+        position: sticky;
+        top: 0;
+        bottom: auto;
+        display: block;
+        width: 100%;
+        margin: 0;
+        border: 0;
+        overflow: visible;
+    }
+
+    .site-header__bar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .9375rem .9375rem .5rem;
+        background: var(--laranja);
+    }
+
+    .site-logo {
+        text-align: left;
+    }
+
+    .site-logo .site-logo__pilha {
+        display: none;
+    }
+
+    .site-logo .site-logo__faixa {
+        display: block;
+        width: auto;
+        height: 50px;
+    }
+
+    .nav-toggle {
+        position: relative;
+        z-index: 20;
+        display: block;
+        width: 59px;
+        height: 53px;
+        margin-right: -.9375rem;
+        padding: 15px;
+        background: none;
+        border: 2px solid transparent;
+        cursor: pointer;
+    }
+
+    .nav-toggle__linha {
+        display: block;
+        width: 25px;
+        height: 3px;
+        margin-bottom: 5px;
+        background: var(--carvao);
+        transition: transform .3s ease, opacity .3s ease;
+    }
+
+    .nav-toggle__linha:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Aberto: as três linhas viram um X */
+    .site-header.is-open .nav-toggle__linha:nth-child(2) { transform: translateY(8px) rotate(45deg); }
+    .site-header.is-open .nav-toggle__linha:nth-child(3) { opacity: 0; }
+    .site-header.is-open .nav-toggle__linha:nth-child(4) { transform: translateY(-8px) rotate(-45deg); }
+
+    /* O painel do menu desce do topo e cobre a tela */
+    .site-header__panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 10;
+        padding-top: 4rem;
+        background: var(--branco);
+        overflow: auto;
+        overscroll-behavior: contain;   /* rolar o menu até o fim não arrasta a página de trás */
+        visibility: hidden;
+        transform: translateY(-100%);
+        transition: transform .5s cubic-bezier(.77, 0, .175, 1), visibility 0s .5s;
+    }
+
+    .site-header.is-open .site-header__panel {
+        visibility: visible;
+        transform: translateY(0);
+        transition: transform .5s cubic-bezier(.77, 0, .175, 1), visibility 0s 0s;
+    }
+
+    .site-header__acao {
+        max-width: 320px;
+        margin: 0 auto;
+    }
+
+    .site-nav {
+        font-size: 1.2rem;
+        line-height: 1.2;
+    }
+
+    .site-nav__sub {
+        font-size: .8rem;
+    }
+
+    .site-nav a::before,
+    .site-nav__alternar::before {
+        bottom: 6px;
+    }
+
+    /* Como na referência: a linha laranja e as redes logo abaixo do último link
+       (no computador elas ficam no pé da coluna, com o margin-top: auto) */
+    .site-social {
+        margin: 1.5rem .9375rem 0;
+    }
+
+    .site-content {
+        min-height: 0;
+    }
+
+    .container,
+    .container-sm {
+        margin-left: 0;
+        margin-right: 0;
+        padding: 3.5rem 1rem 2.5rem;
+    }
+
+    .hero {
+        height: calc(100vh - 170px);
+        min-height: 360px;
+    }
+
+    .hero h1 {
+        font-size: clamp(2rem, 11vw, 3rem);
+    }
+
+    .hero__seta--anterior { left: 4px; }
+    .hero__seta--proxima { right: 4px; }
+    .hero__pausa { bottom: 1.5rem; }
+
+    .split {
+        margin: 4rem 0;
+        padding: 2rem 1.5rem 1rem;
+    }
+
+    .split__foto {
+        min-height: 36vh;
+        margin-left: 0;
+    }
+
+    .split__cartao {
+        width: 92%;
+    }
+
+    .split__cartao-interno {
+        padding: 2.5rem 1.5rem 1.5rem;
+    }
+
+    .polaroids {
+        gap: 2.5rem;
+        padding: 0 1.5rem;
+    }
+
+    .tout {
+        height: 60vh;
+    }
+
+    .tout__cartao {
+        width: 90%;
+        padding: 3rem 1.25rem;
+    }
+
+    .tout__cartao h2 {
+        font-size: clamp(1.9rem, 9vw, 2.75rem);
+    }
+
+    .caixa {
+        margin: 1.5rem 1rem;
+        padding: 3rem 1rem 2rem;
+    }
+
+    .pagina-form {
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+    }
+
+    /* Formulários no celular: botão de enviar na largura toda (dedo acerta fácil)
+       e caixa do "Não sou um robô" no centro */
+    .pagina-form .form-acoes .btn {
+        display: block;
+        width: 100%;
+    }
+
+    .caixa-robo {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .bloco-creme {
+        padding: 1.25rem 1rem;
+    }
+
+    .caixa--placa {
+        padding-bottom: 6.5rem;
+    }
+
+    .caixa--placa::after {
+        right: 1rem;
+        width: 120px;
+        height: 120px;
+    }
+
+    .titulo-linhas > * {
+        font-size: clamp(1.1rem, 5.9vw, 1.4rem);
+    }
+
+    .menu-item__cabecalho {
+        font-size: 1.05rem;
+        line-height: 1.3;
+        padding-bottom: .15rem;
+    }
+
+    .modal-content {
+        padding: 1.25rem;
+    }
+
+    .whatsapp-float {
+        right: 1rem;
+        bottom: 1rem;
+        width: 54px;
+        height: 54px;
+        font-size: 26px;
+    }
+}
+
+/* Tela com menos de 340px: os 304px da caixa do "Não sou um robô" não cabem,
+   então ela encolhe um pouco */
+@media (max-width: 339px) {
+    .caixa-robo .g-recaptcha {
+        transform: scale(.92);
+    }
+}
+
+/* ---------------------------------------------------------------------
+   14. UTILITÁRIOS
+   Ficam no FIM do arquivo de propósito: com a mesma força de seletor,
+   a regra que vem depois vence. Assim um "mb-0" no HTML ganha da margem
+   padrão do componente (ex.: <div class="alert mb-0">).
+   --------------------------------------------------------------------- */
+.texto-centro { text-align: center; }
+.mt-1 { margin-top: 1rem; }
+.mt-2 { margin-top: 2rem; }
+.mb-0 { margin-bottom: 0; }
+.mb-2 { margin-bottom: 2rem; }
+
+/* Impressão: só o conteúdo, sem menu nem enfeites */
+@media print {
+    .site-header,
+    .whatsapp-float,
+    .loading-overlay,
+    .hero,
+    .caixa--placa::after,
+    .enfeite-placa {
+        display: none !important;
+    }
+
+    /* Na impressão não há "rolar": tudo que ainda não tinha surgido aparece */
+    .js .revealable,
+    .js .split.revealable .split__cartao-interno,
+    .js .split.revealable .split__foto {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .site-content {
+        padding-left: 0;
+    }
+
+    body.fundo-xadrez,
+    body.fundo-creme {
+        background: #fff;
+    }
+}

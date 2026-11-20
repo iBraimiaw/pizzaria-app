@@ -84,212 +84,222 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ff4f1f">
     <title>Cadastro - Pizzaria do Bairro</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/acessibilidade.css">
+    <script>
+        // Liga as animações de entrada. Se o site.js não carregar, a classe "js"
+        // sai de novo e nenhum bloco fica invisível esperando a animação.
+        document.documentElement.classList.add('js');
+        window.addEventListener('load', function () {
+            if (!window.__siteJs) { document.documentElement.classList.remove('js'); }
+        });
+    </script>
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .form-container {
-            max-width: 550px;
-            margin: 100px auto;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .form-container h2 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-            font-size: 28px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #e74c3c;
-        }
-        .btn-cadastrar {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-        .btn-cadastrar:hover {
-            transform: translateY(-2px);
-        }
-        .btn-buscar {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 5px;
-            font-size: 12px;
-        }
-        .btn-buscar:hover {
-            background: #2980b9;
-        }
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-        }
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .link-login {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .link-login a {
-            color: #e74c3c;
-            text-decoration: none;
-        }
-        .link-login a:hover {
-            text-decoration: underline;
-        }
+        /* Estilos só desta página (o resto vem do assets/css/style.css) */
+
+        /* Recado embaixo do botão "Buscar coordenadas" (o JavaScript escreve o
+           texto e escolhe a cor). O ícone fica numa coluna só dele, então o texto
+           continua alinhado quando quebra em duas linhas no celular (mesmo desenho
+           das linhas de requisito da senha, que vem do style.css). Vazio ele não tem
+           altura, então não deixa buraco; não usamos display:none para o leitor de
+           tela continuar "ouvindo" a área. */
         .info-coordenadas {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+            display: flex;
+            align-items: baseline;
+            gap: .4em;
+            padding-left: 3px;
+            font-size: .8rem;
         }
-        .senha-requisitos {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+
+        .info-coordenadas:not(:empty) {
+            margin-top: .5rem;
         }
-        .senha-requisitos i {
-            margin-right: 5px;
+
+        /* O ícone não encolhe quando o texto da linha é comprido */
+        .info-coordenadas i {
+            flex: none;
         }
-        .senha-requisitos.valid {
-            color: #27ae60;
+
+        /* Erro na busca: o texto fica escuro (o JavaScript pinta com var(--tinta)) e
+           só o triângulo fica vermelho. Vermelho em letra pequena sobre o creme não
+           dá contraste para ler (3,85:1, o mínimo é 4,5:1); para ícone bastam 3:1. */
+        .info-coordenadas .fa-exclamation-triangle {
+            color: var(--erro);
         }
-        .senha-requisitos.invalid {
-            color: #e74c3c;
-        }
+
+        /* A caixa do "Não sou um robô" (.caixa-robo), o botão largo no celular e a
+           dica do campo terminando em "..." vêm do style.css (iguais nas páginas de formulário) */
     </style>
 </head>
-<body>
-    <div class="form-container">
-        <h2>
-            <i class="fas fa-user-plus"></i> 
-            Criar Conta
-        </h2>
-        
-        <?php if($erro): ?>
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i> <?= e($erro) ?>
-            </div>
-        <?php endif; ?>
-        
-        <?php if($sucesso): ?>
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <?= e($sucesso) ?>
-            </div>
-            <script>
-                setTimeout(function() {
-                    window.location.href = 'login.php';
-                }, 2000);
-            </script>
-        <?php endif; ?>
-        
-        <form method="POST" id="cadastroForm" onsubmit="return validarSenha()">
-            <?= campo_csrf() ?>
-            <div class="form-group">
-                <label><i class="fas fa-user"></i> Nome completo:</label>
-                <input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" required>
-            </div>
-            
-            <div class="form-group">
-                <label><i class="fas fa-envelope"></i> Email:</label>
-                <input type="email" name="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
-            </div>
-            
-            <div class="form-group">
-                <label><i class="fas fa-lock"></i> Senha:</label>
-                <input type="password" name="senha" id="senha" required onkeyup="validarForcaSenha()">
-                <div class="senha-requisitos" id="requisitosMaiuscula">🔤 Pelo menos uma letra MAIÚSCULA</div>
-                <div class="senha-requisitos" id="requisitosMinuscula">🔤 Pelo menos uma letra minúscula</div>
-                <div class="senha-requisitos" id="requisitosTamanho">📏 Mínimo 8 caracteres</div>
-                <div class="senha-requisitos" id="requisitosEspecial">🔣 Pelo menos um número e um caractere especial</div>
-            </div>
-            
-            <div class="form-group">
-                <label><i class="fas fa-lock"></i> Confirmar Senha:</label>
-                <input type="password" name="confirmar_senha" id="confirmar_senha" required onkeyup="validarConfirmacaoSenha()">
-                <div class="senha-requisitos" id="requisitosConfirmacao">✓ As senhas devem coincidir</div>
-            </div>
-            
-            <div class="form-group">
-                <label><i class="fas fa-phone"></i> Telefone:</label>
-                <input type="tel" name="telefone" id="telefone" value="<?php echo isset($_POST['telefone']) ? htmlspecialchars($_POST['telefone']) : ''; ?>" placeholder="(67) 99999-9999" required>
-            </div>
-            
-            <div class="form-group">
-                <label><i class="fas fa-map-marker-alt"></i> Endereço:</label>
-                <input type="text" name="endereco" id="endereco" value="<?php echo isset($_POST['endereco']) ? htmlspecialchars($_POST['endereco']) : ''; ?>" placeholder="Rua, número, bairro, Campo Grande - MS" required>
-                <button type="button" onclick="obterCoordenadas()" class="btn-buscar">
-                    <i class="fas fa-search"></i> Buscar coordenadas
-                </button>
-            </div>
-            
-            <!-- Se o formulário voltar com erro, as coordenadas já buscadas continuam aqui -->
-            <input type="hidden" name="latitude" id="latitude" value="<?= e($_POST['latitude'] ?? '') ?>">
-            <input type="hidden" name="longitude" id="longitude" value="<?= e($_POST['longitude'] ?? '') ?>">
-            <div class="info-coordenadas" id="infoCoordenadas"></div>
-            
-            <?= campo_recaptcha() ?>
+<body class="fundo-creme">
+    <!-- Skip Link para acessibilidade -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
 
-            <button type="submit" class="btn-cadastrar">
-                <i class="fas fa-user-plus"></i> Cadastrar
+    <!-- Anúncio para leitores de tela -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveStatus"></div>
+
+    <!-- Menu: coluna fixa na esquerda (computador) ou barra laranja no topo (celular) -->
+    <header class="site-header" id="siteHeader">
+        <div class="site-header__bar">
+            <a class="site-logo" href="index.php" aria-label="Pizzaria do Bairro - página inicial">
+                <img class="site-logo__pilha" src="assets/img/logo-pilha.svg" alt="Pizzaria do Bairro" width="255" height="325">
+                <img class="site-logo__faixa" src="assets/img/logo-faixa.svg" alt="" aria-hidden="true" width="147" height="50">
+            </a>
+            <button type="button" class="nav-toggle" aria-controls="siteMenu" aria-expanded="false">
+                <span class="sr-only">Abrir ou fechar o menu</span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
+                <span class="nav-toggle__linha" aria-hidden="true"></span>
             </button>
-        </form>
-        
-        <div class="link-login">
-            Já tem conta? <a href="login.php">Faça login aqui</a>
         </div>
-    </div>
-    
+        <div class="site-header__panel" id="siteMenu">
+            <div class="site-header__acao">
+                <a href="cardapio.php" class="btn btn-bloco">Peça online</a>
+            </div>
+            <nav class="site-nav" aria-label="Menu principal">
+                <ul class="site-nav__menu">
+                    <li><a href="index.php">Início</a></li>
+                    <li class="site-nav__grupo">
+                        <button type="button" class="site-nav__alternar" aria-expanded="false" aria-controls="subCardapio">
+                            Cardápio <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="site-nav__sub" id="subCardapio">
+                            <ul>
+                                <li><a href="cardapio.php">Todos os sabores</a></li>
+                                <li><a href="pizza-dupla.php">Pizza dois sabores</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <?php if(isLoggedIn()): ?>
+                        <li><a href="meus-pedidos.php">Meus Pedidos</a></li>
+                        <li><a href="carrinho.php" aria-label="Ver carrinho de compras">Carrinho</a></li>
+                        <?php if(isAdmin()): ?>
+                            <li><a href="admin/" aria-label="Painel administrativo">Admin</a></li>
+                        <?php endif; ?>
+                        <li class="site-nav__usuario">
+                            <!-- "Usuário:" só para o leitor de tela (aria-label num <span> é ignorado) -->
+                            <i class="fas fa-user" aria-hidden="true"></i> <span class="sr-only">Usuário: </span><?= e($_SESSION['usuario_nome']) ?>
+                        </li>
+                        <li><a href="logout.php?token=<?= e(csrf_token()) ?>" aria-label="Sair do sistema">Sair</a></li>
+                    <?php else: ?>
+                        <li><a href="login.php">Entrar</a></li>
+                        <li><a href="cadastro.php" class="is-active" aria-current="page">Cadastrar</a></li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+            <div class="site-social">
+                <ul>
+                    <li><a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a></li>
+                    <li><a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a></li>
+                </ul>
+            </div>
+            <p class="site-header__rodape">&copy; 2024 Pizzaria do Bairro</p>
+        </div>
+    </header>
+
+    <main class="site-content" id="main-content">
+        <!-- Enfeite: placa balançando no canto (só aparece em telas largas) -->
+        <div class="enfeite-placa" aria-hidden="true"></div>
+
+        <!-- Formulário de cadastro: título e campos sobre o fundo creme -->
+        <section class="container-sm pagina-form revealable" aria-labelledby="titulo-pagina">
+            <h1 id="titulo-pagina">Criar Conta</h1>
+
+            <?php if($erro): ?>
+                <div class="alert alert-danger" role="alert"><?= e($erro) ?></div>
+            <?php endif; ?>
+
+            <?php if($sucesso): ?>
+                <div class="alert alert-success" role="status"><?= e($sucesso) ?></div>
+                <!-- Depois do aviso, leva para o login sozinho em 2 segundos -->
+                <script>
+                    setTimeout(function() {
+                        window.location.href = 'login.php';
+                    }, 2000);
+                </script>
+            <?php endif; ?>
+
+            <!-- form-ui: campos, caixa do robô e botão alinhados à esquerda (só o título fica no centro) -->
+            <form method="POST" class="form-ui" id="cadastroForm" onsubmit="return validarSenha()">
+                <?= campo_csrf() ?>
+                <div class="form-group">
+                    <label for="nome">Nome completo <em>- obrigatório</em></label>
+                    <input type="text" name="nome" id="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" autocomplete="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">E-mail <em>- obrigatório</em></label>
+                    <input type="email" name="email" id="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" autocomplete="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha <em>- obrigatório</em></label>
+                    <input type="password" name="senha" id="senha" autocomplete="new-password" aria-describedby="requisitosMaiuscula requisitosMinuscula requisitosTamanho requisitosEspecial" required onkeyup="validarForcaSenha()">
+                    <!-- Enquanto a pessoa digita, o JavaScript troca a classe (valid/invalid) e o ícone de cada linha -->
+                    <div class="senha-requisitos" id="requisitosMaiuscula"><i class="far fa-circle fa-fw" aria-hidden="true"></i> Pelo menos uma letra MAIÚSCULA</div>
+                    <div class="senha-requisitos" id="requisitosMinuscula"><i class="far fa-circle fa-fw" aria-hidden="true"></i> Pelo menos uma letra minúscula</div>
+                    <div class="senha-requisitos" id="requisitosTamanho"><i class="far fa-circle fa-fw" aria-hidden="true"></i> Mínimo 8 caracteres</div>
+                    <div class="senha-requisitos" id="requisitosEspecial"><i class="far fa-circle fa-fw" aria-hidden="true"></i> Pelo menos um número e um caractere especial</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmar_senha">Confirmar Senha <em>- obrigatório</em></label>
+                    <input type="password" name="confirmar_senha" id="confirmar_senha" autocomplete="new-password" aria-describedby="requisitosConfirmacao" required onkeyup="validarConfirmacaoSenha()">
+                    <div class="senha-requisitos" id="requisitosConfirmacao"><i class="far fa-circle fa-fw" aria-hidden="true"></i> As senhas devem coincidir</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="telefone">Telefone <em>- obrigatório</em></label>
+                    <input type="tel" name="telefone" id="telefone" value="<?php echo isset($_POST['telefone']) ? htmlspecialchars($_POST['telefone']) : ''; ?>" placeholder="(67) 99999-9999" autocomplete="tel" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="endereco">Endereço <em>- obrigatório</em></label>
+                    <!-- autocomplete "address-line1": o "street-address" só vale em campo de várias linhas (textarea) -->
+                    <input type="text" name="endereco" id="endereco" value="<?php echo isset($_POST['endereco']) ? htmlspecialchars($_POST['endereco']) : ''; ?>" placeholder="Rua, número, bairro, Campo Grande - MS" autocomplete="address-line1" required>
+                    <button type="button" onclick="obterCoordenadas()" class="btn btn-pequeno btn-contorno">Buscar coordenadas</button>
+                    <!-- O resultado da busca aparece aqui, logo abaixo do botão -->
+                    <div class="info-coordenadas" id="infoCoordenadas" role="status" aria-live="polite"></div>
+                </div>
+
+                <!-- Se o formulário voltar com erro, as coordenadas já buscadas continuam aqui -->
+                <input type="hidden" name="latitude" id="latitude" value="<?= e($_POST['latitude'] ?? '') ?>">
+                <input type="hidden" name="longitude" id="longitude" value="<?= e($_POST['longitude'] ?? '') ?>">
+
+                <div class="caixa-robo">
+                    <?= campo_recaptcha() ?>
+                </div>
+
+                <div class="form-acoes">
+                    <button type="submit" class="btn">Cadastrar</button>
+                </div>
+            </form>
+
+            <p class="pagina-form__links">
+                Já tem conta? <a href="login.php">Faça login aqui</a>
+            </p>
+        </section>
+    </main>
+
+    <script src="assets/js/site.js" defer></script>
+    <script src="assets/js/acessibilidade.js" defer></script>
     <script>
+        // Marca no começo de cada linha de requisito da senha (a mesma do
+        // redefinir-senha.php). Antes eram emojis, cujas cores fogem da paleta;
+        // agora é um ícone que herda a cor da linha (classes valid/invalid do
+        // style.css) + um texto escondido (.sr-only) para o leitor de tela.
+        const MARCA_OK = '<i class="fas fa-circle-check fa-fw" aria-hidden="true"></i><span class="sr-only">Atendido:</span>';
+        const MARCA_FALTA = '<i class="fas fa-circle-xmark fa-fw" aria-hidden="true"></i><span class="sr-only">Não atendido:</span>';
+        const MARCA_NEUTRA = '<i class="far fa-circle fa-fw" aria-hidden="true"></i>';
+
         // Máscara para telefone
         document.getElementById('telefone').addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '');
@@ -310,7 +320,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             const temNumeroEEspecial = /[0-9]/.test(senha) && /[^A-Za-z0-9]/.test(senha);
             const reqEspecial = document.getElementById('requisitosEspecial');
             reqEspecial.className = 'senha-requisitos ' + (temNumeroEEspecial ? 'valid' : 'invalid');
-            reqEspecial.innerHTML = (temNumeroEEspecial ? '✅' : '❌') + ' Pelo menos um número e um caractere especial';
+            reqEspecial.innerHTML = (temNumeroEEspecial ? MARCA_OK : MARCA_FALTA) + ' Pelo menos um número e um caractere especial';
             
             const reqMaiuscula = document.getElementById('requisitosMaiuscula');
             const reqMinuscula = document.getElementById('requisitosMinuscula');
@@ -321,9 +331,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             reqTamanho.className = 'senha-requisitos ' + (tamanhoValido ? 'valid' : 'invalid');
             
             // Atualizar ícones
-            reqMaiuscula.innerHTML = (temMaiuscula ? '✅' : '❌') + ' Pelo menos uma letra MAIÚSCULA';
-            reqMinuscula.innerHTML = (temMinuscula ? '✅' : '❌') + ' Pelo menos uma letra minúscula';
-            reqTamanho.innerHTML = (tamanhoValido ? '✅' : '❌') + ' Mínimo 8 caracteres';
+            reqMaiuscula.innerHTML = (temMaiuscula ? MARCA_OK : MARCA_FALTA) + ' Pelo menos uma letra MAIÚSCULA';
+            reqMinuscula.innerHTML = (temMinuscula ? MARCA_OK : MARCA_FALTA) + ' Pelo menos uma letra minúscula';
+            reqTamanho.innerHTML = (tamanhoValido ? MARCA_OK : MARCA_FALTA) + ' Mínimo 8 caracteres';
             
             validarConfirmacaoSenha();
         }
@@ -335,13 +345,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             const reqConfirmacao = document.getElementById('requisitosConfirmacao');
             
             if (confirmar === '') {
-                reqConfirmacao.innerHTML = '✓ As senhas devem coincidir';
+                reqConfirmacao.innerHTML = MARCA_NEUTRA + ' As senhas devem coincidir';
                 reqConfirmacao.className = 'senha-requisitos';
             } else if (senha === confirmar) {
-                reqConfirmacao.innerHTML = '✅ Senhas coincidem';
+                reqConfirmacao.innerHTML = MARCA_OK + ' Senhas coincidem';
                 reqConfirmacao.className = 'senha-requisitos valid';
             } else {
-                reqConfirmacao.innerHTML = '❌ As senhas NÃO coincidem';
+                reqConfirmacao.innerHTML = MARCA_FALTA + ' As senhas NÃO coincidem';
                 reqConfirmacao.className = 'senha-requisitos invalid';
             }
         }
@@ -391,8 +401,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 return;
             }
             
-            infoDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando coordenadas...';
-            infoDiv.style.color = '#3498db';
+            // As cores vêm da paleta do site (variáveis do style.css): carvão para
+            // "buscando" e "deu certo". No erro o texto fica na cor do texto (tinta)
+            // e só o ícone fica vermelho (regra no <style> desta página): vermelho
+            // em letra pequena sobre o creme fica difícil de ler
+            infoDiv.innerHTML = '<i class="fas fa-spinner fa-spin fa-fw" aria-hidden="true"></i> Buscando coordenadas...';
+            infoDiv.style.color = 'var(--carvao)';
             
             if (!endereco.toLowerCase().includes('campo grande')) {
                 endereco = endereco + ', Campo Grande, MS';
@@ -408,19 +422,19 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                         document.getElementById('latitude').value = lat;
                         document.getElementById('longitude').value = lon;
                         
-                        infoDiv.innerHTML = '<i class="fas fa-check-circle"></i> Coordenadas obtidas com sucesso! Lat: ' + lat.toFixed(6) + ', Lon: ' + lon.toFixed(6);
-                        infoDiv.style.color = '#27ae60';
+                        infoDiv.innerHTML = '<i class="fas fa-check-circle fa-fw" aria-hidden="true"></i> Coordenadas obtidas com sucesso! Lat: ' + lat.toFixed(6) + ', Lon: ' + lon.toFixed(6);
+                        infoDiv.style.color = 'var(--carvao)';
                     } else {
-                        infoDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Não foi possível encontrar o endereço. A entrega será calculada manualmente.';
-                        infoDiv.style.color = '#e74c3c';
+                        infoDiv.innerHTML = '<i class="fas fa-exclamation-triangle fa-fw" aria-hidden="true"></i> Não foi possível encontrar o endereço. A entrega será calculada manualmente.';
+                        infoDiv.style.color = 'var(--tinta)';
                         document.getElementById('latitude').value = '';
                         document.getElementById('longitude').value = '';
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    infoDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Erro ao buscar coordenadas. A entrega será calculada manualmente.';
-                    infoDiv.style.color = '#e74c3c';
+                    infoDiv.innerHTML = '<i class="fas fa-exclamation-triangle fa-fw" aria-hidden="true"></i> Erro ao buscar coordenadas. A entrega será calculada manualmente.';
+                    infoDiv.style.color = 'var(--tinta)';
                     document.getElementById('latitude').value = '';
                     document.getElementById('longitude').value = '';
                 });
